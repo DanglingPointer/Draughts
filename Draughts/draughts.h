@@ -76,8 +76,8 @@ std::ostream& operator << (std::ostream& out, const Field& f)
 		for (char lpos = 'a'; lpos < 'a' + SIZE; ++lpos)
 			out << f(lpos, npos) << ' ';
 		out << '\n';
-		return out;
 	}
+	return out;
 }
 
 class King :public Piece
@@ -85,6 +85,7 @@ class King :public Piece
 public:
 	King(char letter, unsigned int num, Field* pboard, bool white) :Piece(letter, num, pboard, white, true), steps(0)
 	{}
+	int steps;
 	// Sets steps=0 if movement succesfull
 	void move_right()
 	{
@@ -111,7 +112,11 @@ public:
 	}
 	bool eat()
 	{
-		int steps;
+		enum class Direction
+		{
+			r_up, l_up, r_down, l_down
+		} dirn;
+		unsigned int steps;
 		bool eaten = false;
 		while (eatable_right_up() || eatable_right_down() || eatable_left_up() || eatable_left_down())
 		{
@@ -122,6 +127,7 @@ public:
 				m_board(m_lpos, m_npos) = nullptr;
 				m_board(m_lpos + steps + 1, m_npos + steps + 1) = this;
 				m_lpos += steps; m_npos += steps;
+				dirn = Direction::r_up;
 			}
 			else if ((steps = eatable_right_down()) != 0)
 			{
@@ -130,6 +136,7 @@ public:
 				m_board(m_lpos, m_npos) = nullptr;
 				m_board(m_lpos + steps + 1, m_npos - steps - 1) = this;
 				m_lpos += steps; m_npos -= steps;
+				dirn = Direction::r_down;
 			}
 			else if ((steps = eatable_left_up()) != 0)
 			{
@@ -138,6 +145,7 @@ public:
 				m_board(m_lpos, m_npos) = nullptr;
 				m_board(m_lpos - steps - 1, m_npos + steps + 1) = this;
 				m_lpos -= steps; m_npos += steps;
+				dirn = Direction::l_up;
 			}
 			else if ((steps = eatable_left_down()) != 0)
 			{
@@ -146,17 +154,37 @@ public:
 				m_board(m_lpos, m_npos) = nullptr;
 				m_board(m_lpos - steps - 1, m_npos - steps - 1) = this;
 				m_lpos -= steps; m_npos -= steps;
+				dirn = Direction::l_down;
 			}
 			eaten = true;
 		}
+		if (eaten)
+		{
+			switch (dirn)
+			{
+			case Direction::r_up:
+				move_right();
+				break;
+			case Direction::l_up:
+				move_left();
+				break;
+			case Direction::r_down:
+				steps *= -1;
+				move_right();
+				break;
+			case Direction::l_down:
+				steps *= -1;
+				move_left();
+			}
+			steps = 0;
+		}
 		return eaten;
 	}
-	int steps;
 private:
-	// Returns the number of steps where the piece to be eaten is located (or 0)
-	int eatable_right_up() const
+	// @Returns number of steps to go to the first eatable piece (or 0)
+	unsigned int eatable_right_up() const
 	{
-		int step = 1;
+		unsigned int step = 1;
 		while (m_board.inside(m_lpos + step + 1, m_npos + step + 1))
 		{
 			if ( 
@@ -168,9 +196,9 @@ private:
 		}
 		return 0;
 	}
-	int eatable_right_down() const
+	unsigned int eatable_right_down() const
 	{
-		int step = 1;
+		unsigned int step = 1;
 		while (m_board.inside(m_lpos + step + 1, m_npos - step - 1))
 		{
 			if (
@@ -182,9 +210,9 @@ private:
 		}
 		return 0;
 	}
-	int eatable_left_up() const
+	unsigned int eatable_left_up() const
 	{
-		int step = 1;
+		unsigned int step = 1;
 		while (m_board.inside(m_lpos - step - 1, m_npos + step + 1))
 		{
 			if (
@@ -196,9 +224,9 @@ private:
 		}
 		return 0;
 	}
-	int eatable_left_down() const
+	unsigned int eatable_left_down() const
 	{
-		int step = 1;
+		unsigned int step = 1;
 		while (m_board.inside(m_lpos - step - 1, m_npos - step - 1))
 		{
 			if (
