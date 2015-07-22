@@ -267,7 +267,7 @@ namespace Draughts
 		{ }
 		void WhitePiece(Piece* p)
 		{
-			while ((eatable_left_up(p) || eatable_right_up(p)) && m_board.Npos_of(p) != size)
+			while (eatable_left_up(p) || eatable_right_up(p))
 			{
 				if (eatable_left_up(p))
 				{
@@ -296,7 +296,7 @@ namespace Draughts
 		}
 		void BlackPiece(Piece* p)
 		{
-			while ((eatable_left_down(p) || eatable_right_down(p)) && m_board.Npos_of(p) != 1)
+			while (eatable_left_down(p) || eatable_right_down(p))
 			{
 				if (eatable_left_down(p))
 				{
@@ -367,7 +367,6 @@ namespace Draughts
 		}
 	private:
 		Field<size>& m_board;
-
 		bool eatable_right_up(Piece* p) const
 		{
 			return (
