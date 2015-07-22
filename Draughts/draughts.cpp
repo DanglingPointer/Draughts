@@ -5,26 +5,26 @@ using namespace Draughts;
 
 int main()
 {
-	Field<FSIZE> mf;
+	Field<FSIZE> f;
 	WhitePiece* wp = new WhitePiece;
 	BlackPiece* bp = new BlackPiece;
-	mf('b', 4) = bp;
-	mf('b', 2) = wp;
+	f('b', 4) = bp;
+	f('b', 2) = wp;
 
-	std::cout << mf;
+	std::cout << f;
 
-	RightMove<FSIZE> rm(mf);
-	LeftMove<FSIZE> lm(mf);
-	Eat<FSIZE> eat(mf);
+	RightMove<FSIZE> rm(f);
+	LeftMove<FSIZE> lm(f);
+	Eat<FSIZE> eat(f);
 
-	wp->Accept(&rm);
-	std::cout << mf;
+	wp->Accept(rm);
+	std::cout << f;
 
-	bp->Accept(&eat);
-	std::cout << mf;
+	bp->Accept(eat);
+	std::cout << f;
 
-	bp->Accept(&lm);
-	std::cout << mf;
+	bp->Accept(lm);
+	std::cout << f;
 
 	system("pause");
 	return 0;

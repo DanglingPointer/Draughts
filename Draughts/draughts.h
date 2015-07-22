@@ -22,7 +22,7 @@ namespace Draughts
 		virtual ~Piece()
 		{ }
 
-		virtual void Accept(Operation* op) = 0;
+		virtual void Accept(Operation& op) = 0;
 
 		bool King() const
 		{
@@ -39,19 +39,9 @@ namespace Draughts
 	std::ostream& operator << (std::ostream& out, const Piece& p)
 	{
 		if (!p.King())
-		{
-			if (p.White())
-				out << 'e';
-			else
-				out << 'o';
-		}
+			out << (p.White() ? 'e' : 'o');
 		else
-		{
-			if (p.White())
-				out << 'ê';
-			else
-				out << 'ô';
-		}
+			out << (p.White() ? 'ê' : 'ô');
 		return out;
 	}
 
@@ -122,16 +112,16 @@ namespace Draughts
 		return out;
 	}
 
-	//--------------------------------------------------------------------------------------------------
+	//-------------------------------------------------------------------------------------------------
 
 	class King :public Piece
 	{
 	public:
 		King(bool white) :Piece(white, true)
 		{ }
-		void Accept(Operation* op)
+		void Accept(Operation& op)
 		{
-			op->King(this);
+			op.King(this);
 		}
 	};
 
@@ -142,9 +132,9 @@ namespace Draughts
 		{ }
 		~WhitePiece()
 		{ }
-		void Accept(Operation* op)
+		void Accept(Operation& op)
 		{
-			op->WhitePiece(this);
+			op.WhitePiece(this);
 		}
 	};
 
@@ -155,13 +145,13 @@ namespace Draughts
 		{ }
 		~BlackPiece()
 		{ }
-		void Accept(Operation* op)
+		void Accept(Operation& op)
 		{
-			op->BlackPiece(this);
+			op.BlackPiece(this);
 		}
 	};
 
-	//--------------------------------------------------------------------------------------------------
+	//-------------------------------------------------------------------------------------------------
 
 	template<unsigned int size> class RightMove :public Operation
 	{
