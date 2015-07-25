@@ -95,17 +95,14 @@ namespace Draughts
 		Field(const Field<size>& f)
 		{
 			for (int i = 0; i < size*size; ++i)
+			{
 				if (f.m_field[i] == nullptr)
-				{
 					m_field[i] = nullptr;
-				}
+				else if (!f.m_field[i]->King())
+					f.m_field[i]->White() ? (m_field[i] = new WhitePiece) : (m_field[i] = new BlackPiece);
 				else
-				{
-					if (!f.m_field[i]->King())
-						f.m_field[i]->White() ? (m_field[i] = new WhitePiece) : (m_field[i] = new BlackPiece);
-					else
-						f.m_field[i]->White() ? (m_field[i] = new King(true)) : (m_field[i] = new King(false));
-				}
+					f.m_field[i]->White() ? (m_field[i] = new King(true)) : (m_field[i] = new King(false));
+			}
 		}
 		~Field()
 		{
