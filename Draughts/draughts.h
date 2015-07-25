@@ -92,6 +92,21 @@ namespace Draughts
 				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
 					operator()(letter, row) = new BlackPiece;
 		}
+		Field(const Field<size>& f)
+		{
+			for (int i = 0; i < size*size; ++i)
+				if (f.m_field[i] == nullptr)
+				{
+					m_field[i] = nullptr;
+				}
+				else
+				{
+					if (!f.m_field[i]->King())
+						f.m_field[i]->White() ? (m_field[i] = new WhitePiece) : (m_field[i] = new BlackPiece);
+					else
+						f.m_field[i]->White() ? (m_field[i] = new King(true)) : (m_field[i] = new King(false));
+				}
+		}
 		~Field()
 		{
 			for (int i = 0; i < size*size; ++i)
@@ -179,6 +194,47 @@ namespace Draughts
 	protected:
 		Field<size>& m_board;
 	};
+	template<unsigned int size> class JumpTool
+	{
+	public:
+		JumpTool(Field<size>& f) :m_board(f)
+		{ }
+		bool jumpable_right_up(Piece* p) const
+		{
+			return (
+				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) == nullptr &&
+				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) != nullptr && (
+				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && !p->White())
+				));
+		}
+		bool jumpable_left_up(Piece* p) const
+		{
+			return (
+				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) == nullptr &&
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) != nullptr && (
+				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && !p->White())
+				));
+		}
+		bool jumpable_right_down(Piece* p) const
+		{
+			return (
+				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) == nullptr &&
+				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) != nullptr && (
+				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && !p->White())
+				));
+		}
+		bool jumpable_left_down(Piece* p) const
+		{
+			return (
+				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) == nullptr &&
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) != nullptr && (
+				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && !p->White())
+				));
+		}
+	protected:
+		Field<size>& m_board;
+	};
+	//------------------------------------------------------------------------------------------------
 	template<unsigned int size> class RightMove :public Operation, protected MoveTool < size >
 	{
 	public:
@@ -278,46 +334,6 @@ namespace Draughts
 		}
 	};
 	//------------------------------------------------------------------------------------------------
-	template<unsigned int size> class JumpTool
-	{
-	public:
-		JumpTool(Field<size>& f) :m_board(f)
-		{ }
-		bool jumpable_right_up(Piece* p) const
-		{
-			return (
-				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && !p->White())
-				));
-		}
-		bool jumpable_left_up(Piece* p) const
-		{
-			return (
-				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && !p->White())
-				));
-		}
-		bool jumpable_right_down(Piece* p) const
-		{
-			return (
-				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && !p->White())
-				));
-		}
-		bool jumpable_left_down(Piece* p) const
-		{
-			return (
-				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && !p->White())
-				));
-		}
-	protected:
-		Field<size>& m_board;
-	};
 	template<unsigned int size> class RightJump :public Operation, protected JumpTool < size >
 	{
 	public:
@@ -440,7 +456,7 @@ namespace Draughts
 			}
 		}
 	};
-
+	//------------------------------------------------------------------------------------------------
 	template<unsigned int size> class MoveFinder :public Operation, protected JumpTool < size >, protected MoveTool < size >
 	{ // Should go through all pieces on one side at a time, then clear buffers
 	public:
