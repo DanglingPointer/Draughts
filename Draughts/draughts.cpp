@@ -18,9 +18,12 @@ int main()
 
 	RightMove<FSIZE> rm(f);
 	LeftMove<FSIZE> lm(f);
-	LeftEat<FSIZE> leat(f);
-	RightEat<FSIZE> reat(f);
-	MoveFinder<FSIZE> det(f);
+	LeftJump<FSIZE> lj(f);
+	RightJump<FSIZE> rj(f);
+	MoveFinder<FSIZE> mf(f);
+
+	f('b', 4)->Accept(mf); // error: ambiguous conversions from 'MoveFinder<10>' to 'Operation&'
+	std::cout << mf.LMovies().empty();
 
 	//wp->Accept(rm);
 	//std::cout << f;

@@ -85,20 +85,12 @@ namespace Draughts
 				m_field[i] = nullptr;
 
 			for (unsigned int row = 1; row < size / 2; ++row)
-				if (row % 2)
-					for (char letter = 'a'; letter < 'a' + size; letter += 2)
-						operator()(letter, row) = new WhitePiece;
-				else
-					for (char letter = 'b'; letter < 'a' + size; letter += 2)
-						operator()(letter, row) = new WhitePiece;
+				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
+					operator()(letter, row) = new WhitePiece;
 
 			for (unsigned int row = size; row > size / 2 + 1; --row)
-				if (row % 2)
-					for (char letter = 'a'; letter < 'a' + size; letter += 2)
-						operator()(letter, row) = new BlackPiece;
-				else
-					for (char letter = 'b'; letter < 'a' + size; letter += 2)
-						operator()(letter, row) = new BlackPiece;
+				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
+					operator()(letter, row) = new BlackPiece;
 		}
 		~Field()
 		{
@@ -161,29 +153,32 @@ namespace Draughts
 	//------------------------------------------------------------------------------------------------
 	template<unsigned int size> class Move_base :public Operation
 	{ // Abstract base
-	public:
+	protected:
 		Move_base(Field<size>& f) :m_board(f)
 		{ }
-	protected:
-		bool movable_right_up(Piece* p)
+		bool movable_right_up(Piece* p) const
 		{
-			return m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) && m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) == nullptr;
+			return m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) && 
+				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) == nullptr;
 		}
-		bool movable_left_up(Piece* p)
+		bool movable_left_up(Piece* p) const
 		{
-			return m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) && m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) == nullptr;
+			return m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) && 
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) == nullptr;
 		}
-		bool movable_right_down(Piece* p)
+		bool movable_right_down(Piece* p) const
 		{
-			return m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) && m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) == nullptr;
+			return m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) && 
+				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) == nullptr;
 		}
-		bool movable_left_down(Piece* p)
+		bool movable_left_down(Piece* p) const
 		{
-			return m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) && m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) == nullptr;
+			return m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) && 
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) == nullptr;
 		}
 		Field<size>& m_board;
 	};
-	template<unsigned int size> class RightMove :public Move_base < size > 
+	template<unsigned int size> class RightMove :public Move_base < size >
 	{
 	public:
 		RightMove(Field<size>& f) :Move_base<size>(f)
@@ -232,7 +227,7 @@ namespace Draughts
 			}
 		}
 	};
-	template<unsigned int size> class LeftMove :public Move_base < size > 
+	template<unsigned int size> class LeftMove :public Move_base < size >
 	{
 	public:
 		LeftMove(Field<size>& f) :Move_base<size>(f)
@@ -281,14 +276,13 @@ namespace Draughts
 			}
 		}
 	};
-	template<unsigned int size> class Eat_base :public Operation
+	//------------------------------------------------------------------------------------------------
+	template<unsigned int size> class Jump_base :public Operation
 	{ // Abstract base
-	public:
-		Eat_base(Field<size>& f) :m_board(f)
-		{ }
 	protected:
-		Field<size>& m_board;
-		bool eatable_right_up(Piece* p) const
+		Jump_base(Field<size>& f) :m_board(f)
+		{ }
+		bool jumpable_right_up(Piece* p) const
 		{
 			return (
 				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) == nullptr &&
@@ -296,7 +290,7 @@ namespace Draughts
 				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && !p->White())
 				));
 		}
-		bool eatable_left_up(Piece* p) const
+		bool jumpable_left_up(Piece* p) const
 		{
 			return (
 				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) == nullptr &&
@@ -304,7 +298,7 @@ namespace Draughts
 				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && !p->White())
 				));
 		}
-		bool eatable_right_down(Piece* p) const
+		bool jumpable_right_down(Piece* p) const
 		{
 			return (
 				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) == nullptr &&
@@ -312,7 +306,7 @@ namespace Draughts
 				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && !p->White())
 				));
 		}
-		bool eatable_left_down(Piece* p) const
+		bool jumpable_left_down(Piece* p) const
 		{
 			return (
 				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) == nullptr &&
@@ -320,15 +314,16 @@ namespace Draughts
 				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && !p->White())
 				));
 		}
+		Field<size>& m_board;
 	};
-	template<unsigned int size> class LeftEat :public Eat_base < size >
+	template<unsigned int size> class LeftJump :public Jump_base < size >
 	{
 	public:
-		LeftEat(Field<size>& f) :Eat_base<size>(f)
+		LeftJump(Field<size>& f) :Jump_base<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
-			if (eatable_left_up(p))
+			if (jumpable_left_up(p))
 			{
 				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
@@ -345,7 +340,7 @@ namespace Draughts
 		}
 		void BlackPiece(Piece* p)
 		{
-			if (eatable_left_down(p))
+			if (jumpable_left_down(p))
 			{
 				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
@@ -362,7 +357,7 @@ namespace Draughts
 		}
 		void King(Piece* p)
 		{
-			if (eatable_left_up(p))
+			if (jumpable_left_up(p))
 			{
 				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
@@ -371,7 +366,7 @@ namespace Draughts
 				m_board(temp.first - 2, temp.second + 2) = p;
 				m_board(temp.first, temp.second) = nullptr;
 			}
-			else if (eatable_left_down(p))
+			else if (jumpable_left_down(p))
 			{
 				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
@@ -382,14 +377,14 @@ namespace Draughts
 			}
 		}
 	};
-	template<unsigned int size> class RightEat :public Eat_base < size >
+	template<unsigned int size> class RightJump :public Jump_base < size >
 	{
 	public:
-		RightEat(Field<size>& f) :Eat_base<size>(f)
+		RightJump(Field<size>& f) :Jump_base<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
-			if (eatable_right_up(p))
+			if (jumpable_right_up(p))
 			{
 				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
 				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
@@ -406,7 +401,7 @@ namespace Draughts
 		}
 		void BlackPiece(Piece* p)
 		{
-			if (eatable_right_down(p))
+			if (jumpable_right_down(p))
 			{
 				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
 				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
@@ -423,7 +418,7 @@ namespace Draughts
 		}
 		void King(Piece* p)
 		{
-			if (eatable_right_up(p))
+			if (jumpable_right_up(p))
 			{
 				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
 				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
@@ -432,7 +427,7 @@ namespace Draughts
 				m_board(temp.first + 2, temp.second + 2) = p;
 				m_board(temp.first, temp.second) = nullptr;
 			}
-			else if (eatable_right_down(p))
+			else if (jumpable_right_down(p))
 			{
 				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
 				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
@@ -444,17 +439,17 @@ namespace Draughts
 		}
 	};
 
-	template<unsigned int size> class MoveFinder :public Eat_base < size >, Move_base < size > 
+	template<unsigned int size> class MoveFinder :public Jump_base < size >, public Move_base < size >
 	{ // Should go through all pieces on one side at a time, then clear buffers
 	public:
-		MoveFinder(Field<size>& f) :Eat_base<size>(f), Move_base<size>(f)
+		MoveFinder(Field<size>& f) :Jump_base<size>(f), Move_base<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
-			if (eatable_right_up(p))
-				m_reaties.insert(p);
-			else if (eatable_left_up(p))
-				m_leaties.insert(p);
+			if (jumpable_right_up(p)) 
+				m_rjumpies.insert(p);
+			else if (jumpable_left_up(p)) 
+				m_ljumpies.insert(p);
 			else if (movable_right_up(p))
 				m_rmovies.insert(p);
 			else if (movable_left_up(p))
@@ -462,10 +457,10 @@ namespace Draughts
 		}
 		void BlackPiece(Piece* p)
 		{
-			if (eatable_right_down(p))
-				m_reaties.insert(p);
-			else if (eatable_left_down(p))
-				m_leaties.insert(p);
+			if (jumpable_right_down(p))
+				m_rjumpies.insert(p);
+			else if (jumpable_left_down(p))
+				m_ljumpies.insert(p);
 			else if (movable_right_down(p))
 				m_rmovies.insert(p);
 			else if (movable_left_down(p))
@@ -473,22 +468,22 @@ namespace Draughts
 		}
 		void King(Piece* p)
 		{
-			if (eatable_right_down(p) || eatable_right_up(p))
-				m_reaties.insert(p);
-			else if (eatable_left_down(p) || eatable_left_up(p))
-				m_leaties.insert(p);
+			if (jumpable_right_down(p) || jumpable_right_up(p))
+				m_rjumpies.insert(p);
+			else if (jumpable_left_down(p) || jumpable_left_up(p))
+				m_ljumpies.insert(p);
 			else if (movable_right_down(p) || movable_right_up(p))
 				m_rmovies.insert(p);
 			else if (movable_left_down(p) || movable_left_up(p))
 				m_lmovies.insert(p);
 		}
-		std::set<Piece*> REaties() const
+		std::set<Piece*> RJumpies() const
 		{
-			return m_reaties;
+			return m_rjumpies;
 		}
-		std::set<Piece*> LEaties() const
+		std::set<Piece*> LJumpies() const
 		{
-			return m_leaties;
+			return m_ljumpies;
 		}
 		std::set<Piece*> RMovies() const
 		{
@@ -500,14 +495,15 @@ namespace Draughts
 		}
 		void Clear()
 		{
-			m_eaties.clear();
+			m_rjumpies.clear();
+			m_ljumpies.clear();
 			m_rmovies.clear();
 			m_lmovies.clear();
 		}
 	private:
-		std::set<Piece*> m_reaties;
-		std::set<Piece*> m_leaties;
+		std::set<Piece*> m_rjumpies;	// those in position to jump to the right
+		std::set<Piece*> m_ljumpies;
 		std::set<Piece*> m_rmovies;
-		std::set<Piece*> m_lmovies;
+		std::set<Piece*> m_lmovies;		// those in position to move to the left
 	};
 }
