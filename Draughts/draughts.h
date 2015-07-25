@@ -2,6 +2,7 @@
 #include<cctype>
 #include<utility>
 #include<ostream>
+#include<set>
 
 // Rules: https://en.wikipedia.org/wiki/English_draughts
 
@@ -157,15 +158,39 @@ namespace Draughts
 		out << '\n';
 		return out;
 	}
-	//-------------------------------------------------------------------------------------------------
-	template<unsigned int size> class RightMove :public Operation
+	//------------------------------------------------------------------------------------------------
+	template<unsigned int size> class Move_base :public Operation
 	{
 	public:
-		RightMove(Field<size>& f) :m_board(f)
+		Move_base(Field<size>& f) :m_board(f)
+		{ }
+	protected:
+		bool movable_right_up(Piece* p)
+		{
+			return m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) && m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) == nullptr;
+		}
+		bool movable_left_up(Piece* p)
+		{
+			return m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) && m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) == nullptr;
+		}
+		bool movable_right_down(Piece* p)
+		{
+			return m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) && m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) == nullptr;
+		}
+		bool movable_left_down(Piece* p)
+		{
+			return m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) && m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) == nullptr;
+		}
+		Field<size>& m_board;
+	};
+	template<unsigned int size> class RightMove :public Move_base < size > 
+	{
+	public:
+		RightMove(Field<size>& f) :Move_base<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
-			if (m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) && m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) == nullptr)
+			if (movable_right_up(p))
 			{
 				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
 				m_board(temp.first + 1, temp.second + 1) = p;
@@ -179,7 +204,7 @@ namespace Draughts
 		}
 		void BlackPiece(Piece* p)
 		{
-			if (m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) && m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) == nullptr)
+			if (movable_right_down(p))
 			{
 				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
 				m_board(temp.first + 1, temp.second - 1) = p;
@@ -206,17 +231,15 @@ namespace Draughts
 				m_board(temp.first, temp.second) = nullptr;
 			}
 		}
-	private:
-		Field<size>& m_board;
 	};
-	template<unsigned int size> class LeftMove :public Operation
+	template<unsigned int size> class LeftMove :public Move_base < size > 
 	{
 	public:
-		LeftMove(Field<size>& f) :m_board(f)
+		LeftMove(Field<size>& f) :Move_base<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
-			if (m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) && m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) == nullptr)
+			if (movable_left_up(p))
 			{
 				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
 				m_board(temp.first - 1, temp.second + 1) = p;
@@ -230,7 +253,7 @@ namespace Draughts
 		}
 		void BlackPiece(Piece* p)
 		{
-			if (m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) && m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) == nullptr)
+			if (movable_left_down(p))
 			{
 				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
 				m_board(temp.first - 1, temp.second - 1) = p;
@@ -257,13 +280,51 @@ namespace Draughts
 				m_board(temp.first, temp.second) = nullptr;
 			}
 		}
-	private:
-		Field<size>& m_board;
 	};
-	template<unsigned int size> class Eat :public Operation
+	template<unsigned int size> class Eat_base :public Operation
+	{ // Abstract base
+	public:
+		Eat_base(Field<size>& f) :m_board(f)
+		{ }
+	protected:
+		Field<size>& m_board;
+		bool eatable_right_up(Piece* p) const
+		{
+			return (
+				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) == nullptr &&
+				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) != nullptr && (
+				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && !p->White())
+				));
+		}
+		bool eatable_left_up(Piece* p) const
+		{
+			return (
+				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) == nullptr &&
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) != nullptr && (
+				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && !p->White())
+				));
+		}
+		bool eatable_right_down(Piece* p) const
+		{
+			return (
+				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) == nullptr &&
+				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) != nullptr && (
+				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && !p->White())
+				));
+		}
+		bool eatable_left_down(Piece* p) const
+		{
+			return (
+				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) == nullptr &&
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) != nullptr && (
+				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && !p->White())
+				));
+		}
+	};
+	template<unsigned int size> class EatMove :public Eat_base < size >
 	{
 	public:
-		Eat(Field<size>& f) :m_board(f)
+		EatMove(Field<size>& f) :Eat_base<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
@@ -365,39 +426,48 @@ namespace Draughts
 				}
 			}
 		}
+	};
+	template<unsigned int size> class MoveFinder :public Eat_base < size >, Move_base < size > 
+	{ // Should go through all pieces on one side at a time, then clear buffers
+	public:
+		MoveFinder(Field<size>& f) :Eat_base<size>(f), Move_base<size>(f)
+		{ }
+		void WhitePiece(Piece* p)
+		{
+			if (eatable_right_up(p) || eatable_left_up(p))
+				m_eaties.insert(p);
+			else if (movable_right_up(p) || movable_left_up(p))
+				m_movies.insert(p);
+		}
+		void BlackPiece(Piece* p)
+		{
+			if (eatable_right_down(p) || eatable_left_down(p))
+				m_eaties.insert(p);
+			else if (movable_right_down(p) || movable_left_down(p))
+				m_movies.insert(p);
+		}
+		void King(Piece* p)
+		{
+			if (eatable_right_down(p) || eatable_left_down(p) || eatable_right_up(p) || eatable_left_up(p))
+				m_eaties.insert(p);
+			else if (movable_right_down(p) || movable_left_down(p) || movable_right_up(p) || movable_left_up(p))
+				m_movies.insert(p);
+		}
+		std::set<Piece*> Eaties() const
+		{
+			return m_eaties;
+		}
+		std::set<Piece*> Movies() const
+		{
+			return m_movies;
+		}
+		void Clear()
+		{
+			m_eaties.clear();
+			m_movies.clear();
+		}
 	private:
-		Field<size>& m_board;
-		bool eatable_right_up(Piece* p) const
-		{
-			return (
-				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && !p->White())
-				));
-		}
-		bool eatable_left_up(Piece* p) const
-		{
-			return (
-				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && !p->White())
-				));
-		}
-		bool eatable_right_down(Piece* p) const
-		{
-			return (
-				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && !p->White())
-				));
-		}
-		bool eatable_left_down(Piece* p) const
-		{
-			return (
-				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && !p->White())
-				));
-		}
+		std::set<Piece*> m_eaties;
+		std::set<Piece*> m_movies;
 	};
 }

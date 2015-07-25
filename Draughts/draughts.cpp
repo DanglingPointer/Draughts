@@ -16,9 +16,10 @@ int main()
 
 	//std::cout << f;
 
-	//RightMove<FSIZE> rm(f);
-	//LeftMove<FSIZE> lm(f);
-	//Eat<FSIZE> eat(f);
+	RightMove<FSIZE> rm(f);
+	LeftMove<FSIZE> lm(f);
+	EatMove<FSIZE> eat(f);
+	MoveFinder<FSIZE> det(f);
 
 	//wp->Accept(rm);
 	//std::cout << f;
