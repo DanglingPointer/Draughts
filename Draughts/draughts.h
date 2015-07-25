@@ -153,7 +153,7 @@ namespace Draughts
 	//------------------------------------------------------------------------------------------------
 	template<unsigned int size> class MoveTool
 	{
-	protected:
+	public:
 		MoveTool(Field<size>& f) :m_board(f)
 		{ }
 		bool movable_right_up(Piece* p) const
@@ -176,6 +176,7 @@ namespace Draughts
 			return m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) && 
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) == nullptr;
 		}
+	protected:
 		Field<size>& m_board;
 	};
 	template<unsigned int size> class RightMove :public Operation, protected MoveTool < size >
@@ -279,7 +280,7 @@ namespace Draughts
 	//------------------------------------------------------------------------------------------------
 	template<unsigned int size> class JumpTool
 	{
-	protected:
+	public:
 		JumpTool(Field<size>& f) :m_board(f)
 		{ }
 		bool jumpable_right_up(Piece* p) const
@@ -314,6 +315,7 @@ namespace Draughts
 				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && !p->White())
 				));
 		}
+	protected:
 		Field<size>& m_board;
 	};
 	template<unsigned int size> class RightJump :public Operation, protected JumpTool < size >

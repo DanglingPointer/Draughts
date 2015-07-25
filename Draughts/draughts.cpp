@@ -22,7 +22,8 @@ int main()
 	RightJump<FSIZE> rj(f);
 	MoveFinder<FSIZE> mf(f);
 
-	f('b', 4)->Accept(mf);
+	//f('b', 4)->Accept(mf);
+	f('a', 1)->Accept(mf);
 	std::cout << mf.RMovies().empty() << mf.LMovies().empty() << '\n';
 
 	system("pause");
