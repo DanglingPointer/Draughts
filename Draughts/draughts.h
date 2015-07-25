@@ -151,10 +151,10 @@ namespace Draughts
 		return out;
 	}
 	//------------------------------------------------------------------------------------------------
-	template<unsigned int size> class Move_base :public Operation
-	{ // Abstract base
+	template<unsigned int size> class MoveTool
+	{
 	protected:
-		Move_base(Field<size>& f) :m_board(f)
+		MoveTool(Field<size>& f) :m_board(f)
 		{ }
 		bool movable_right_up(Piece* p) const
 		{
@@ -178,10 +178,10 @@ namespace Draughts
 		}
 		Field<size>& m_board;
 	};
-	template<unsigned int size> class RightMove :public Move_base < size >
+	template<unsigned int size> class RightMove :public Operation, protected MoveTool < size >
 	{
 	public:
-		RightMove(Field<size>& f) :Move_base<size>(f)
+		RightMove(Field<size>& f) :MoveTool<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
@@ -227,10 +227,10 @@ namespace Draughts
 			}
 		}
 	};
-	template<unsigned int size> class LeftMove :public Move_base < size >
+	template<unsigned int size> class LeftMove :public Operation, protected MoveTool < size >
 	{
 	public:
-		LeftMove(Field<size>& f) :Move_base<size>(f)
+		LeftMove(Field<size>& f) :MoveTool<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
@@ -277,10 +277,10 @@ namespace Draughts
 		}
 	};
 	//------------------------------------------------------------------------------------------------
-	template<unsigned int size> class Jump_base :public Operation
-	{ // Abstract base
+	template<unsigned int size> class JumpTool
+	{
 	protected:
-		Jump_base(Field<size>& f) :m_board(f)
+		JumpTool(Field<size>& f) :m_board(f)
 		{ }
 		bool jumpable_right_up(Piece* p) const
 		{
@@ -316,71 +316,10 @@ namespace Draughts
 		}
 		Field<size>& m_board;
 	};
-	template<unsigned int size> class LeftJump :public Jump_base < size >
+	template<unsigned int size> class RightJump :public Operation, protected JumpTool < size >
 	{
 	public:
-		LeftJump(Field<size>& f) :Jump_base<size>(f)
-		{ }
-		void WhitePiece(Piece* p)
-		{
-			if (jumpable_left_up(p))
-			{
-				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
-
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 2, temp.second + 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
-			}
-			if (m_board.Npos_of(p) == size)
-			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
-				p->~Piece();
-			}
-		}
-		void BlackPiece(Piece* p)
-		{
-			if (jumpable_left_down(p))
-			{
-				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
-
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 2, temp.second - 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
-			}
-			if (m_board.Npos_of(p) == 1)
-			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
-				p->~Piece();
-			}
-		}
-		void King(Piece* p)
-		{
-			if (jumpable_left_up(p))
-			{
-				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
-
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 2, temp.second + 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
-			}
-			else if (jumpable_left_down(p))
-			{
-				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
-
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 2, temp.second - 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
-			}
-		}
-	};
-	template<unsigned int size> class RightJump :public Jump_base < size >
-	{
-	public:
-		RightJump(Field<size>& f) :Jump_base<size>(f)
+		RightJump(Field<size>& f) :JumpTool<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
@@ -438,44 +377,117 @@ namespace Draughts
 			}
 		}
 	};
-
-	template<unsigned int size> class MoveFinder :public Jump_base < size >, public Move_base < size >
-	{ // Should go through all pieces on one side at a time, then clear buffers
+	template<unsigned int size> class LeftJump :public Operation, protected JumpTool < size >
+	{
 	public:
-		MoveFinder(Field<size>& f) :Jump_base<size>(f), Move_base<size>(f)
+		LeftJump(Field<size>& f) :JumpTool<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
-			if (jumpable_right_up(p)) 
+			if (jumpable_left_up(p))
+			{
+				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
+
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first - 2, temp.second + 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
+			}
+			if (m_board.Npos_of(p) == size)
+			{
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
+				p->~Piece();
+			}
+		}
+		void BlackPiece(Piece* p)
+		{
+			if (jumpable_left_down(p))
+			{
+				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
+
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first - 2, temp.second - 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
+			}
+			if (m_board.Npos_of(p) == 1)
+			{
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
+				p->~Piece();
+			}
+		}
+		void King(Piece* p)
+		{
+			if (jumpable_left_up(p))
+			{
+				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
+
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first - 2, temp.second + 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
+			}
+			else if (jumpable_left_down(p))
+			{
+				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
+
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first - 2, temp.second - 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
+			}
+		}
+	};
+
+	template<unsigned int size> class MoveFinder :public Operation, protected JumpTool < size >, protected MoveTool < size >
+	{ // Should go through all pieces on one side at a time, then clear buffers
+	public:
+		MoveFinder(Field<size>& f) :JumpTool<size>(f), MoveTool<size>(f)
+		{ }
+		void WhitePiece(Piece* p)
+		{
+			if (jumpable_right_up(p) || jumpable_left_up(p))
 				m_rjumpies.insert(p);
-			else if (jumpable_left_up(p)) 
+			if (jumpable_left_up(p)) 
 				m_ljumpies.insert(p);
-			else if (movable_right_up(p))
-				m_rmovies.insert(p);
-			else if (movable_left_up(p))
-				m_lmovies.insert(p);
+
+			if (m_rjumpies.empty() && m_ljumpies.empty())
+			{
+				if (movable_right_up(p))
+					m_rmovies.insert(p);
+				if (movable_left_up(p))
+					m_lmovies.insert(p);
+			}
 		}
 		void BlackPiece(Piece* p)
 		{
 			if (jumpable_right_down(p))
 				m_rjumpies.insert(p);
-			else if (jumpable_left_down(p))
+			if (jumpable_left_down(p))
 				m_ljumpies.insert(p);
-			else if (movable_right_down(p))
-				m_rmovies.insert(p);
-			else if (movable_left_down(p))
-				m_lmovies.insert(p);
+
+			if (m_rjumpies.empty() && m_ljumpies.empty())
+			{
+				if (movable_right_down(p))
+					m_rmovies.insert(p);
+				if (movable_left_down(p))
+					m_lmovies.insert(p);
+			}
 		}
 		void King(Piece* p)
 		{
 			if (jumpable_right_down(p) || jumpable_right_up(p))
 				m_rjumpies.insert(p);
-			else if (jumpable_left_down(p) || jumpable_left_up(p))
+			if (jumpable_left_down(p) || jumpable_left_up(p))
 				m_ljumpies.insert(p);
-			else if (movable_right_down(p) || movable_right_up(p))
-				m_rmovies.insert(p);
-			else if (movable_left_down(p) || movable_left_up(p))
-				m_lmovies.insert(p);
+
+			if (m_rjumpies.empty() && m_ljumpies.empty())
+			{
+				if (movable_right_down(p) || movable_right_up(p))
+					m_rmovies.insert(p);
+				if (movable_left_down(p) || movable_left_up(p))
+					m_lmovies.insert(p);
+			}
 		}
 		std::set<Piece*> RJumpies() const
 		{

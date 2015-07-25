@@ -22,17 +22,8 @@ int main()
 	RightJump<FSIZE> rj(f);
 	MoveFinder<FSIZE> mf(f);
 
-	f('b', 4)->Accept(mf); // error: ambiguous conversions from 'MoveFinder<10>' to 'Operation&'
-	std::cout << mf.LMovies().empty();
-
-	//wp->Accept(rm);
-	//std::cout << f;
-
-	//bp->Accept(eat);
-	//std::cout << f;
-
-	//bp->Accept(lm);
-	//std::cout << f;
+	f('b', 4)->Accept(mf);
+	std::cout << mf.RMovies().empty() << mf.LMovies().empty() << '\n';
 
 	system("pause");
 	return 0;
