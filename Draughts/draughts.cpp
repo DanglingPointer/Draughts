@@ -18,7 +18,8 @@ int main()
 
 	RightMove<FSIZE> rm(f);
 	LeftMove<FSIZE> lm(f);
-	EatMove<FSIZE> eat(f);
+	LeftEat<FSIZE> leat(f);
+	RightEat<FSIZE> reat(f);
 	MoveFinder<FSIZE> det(f);
 
 	//wp->Accept(rm);

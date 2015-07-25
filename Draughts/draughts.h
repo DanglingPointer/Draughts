@@ -160,7 +160,7 @@ namespace Draughts
 	}
 	//------------------------------------------------------------------------------------------------
 	template<unsigned int size> class Move_base :public Operation
-	{
+	{ // Abstract base
 	public:
 		Move_base(Field<size>& f) :m_board(f)
 		{ }
@@ -321,33 +321,21 @@ namespace Draughts
 				));
 		}
 	};
-	template<unsigned int size> class EatMove :public Eat_base < size >
+	template<unsigned int size> class LeftEat :public Eat_base < size >
 	{
 	public:
-		EatMove(Field<size>& f) :Eat_base<size>(f)
+		LeftEat(Field<size>& f) :Eat_base<size>(f)
 		{ }
 		void WhitePiece(Piece* p)
 		{
-			while (eatable_left_up(p) || eatable_right_up(p))
+			if (eatable_left_up(p))
 			{
-				if (eatable_left_up(p))
-				{
-					delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
-					m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
+				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
 
-					std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-					m_board(temp.first - 2, temp.second + 2) = p;
-					m_board(temp.first, temp.second) = nullptr;
-				}
-				else
-				{
-					delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
-					m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
-
-					std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-					m_board(temp.first + 2, temp.second + 2) = p;
-					m_board(temp.first, temp.second) = nullptr;
-				}
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first - 2, temp.second + 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
 			}
 			if (m_board.Npos_of(p) == size)
 			{
@@ -357,26 +345,14 @@ namespace Draughts
 		}
 		void BlackPiece(Piece* p)
 		{
-			while (eatable_left_down(p) || eatable_right_down(p))
+			if (eatable_left_down(p))
 			{
-				if (eatable_left_down(p))
-				{
-					delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
-					m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
+				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
 
-					std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-					m_board(temp.first - 2, temp.second - 2) = p;
-					m_board(temp.first, temp.second) = nullptr;
-				}
-				else
-				{
-					delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
-					m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
-
-					std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-					m_board(temp.first + 2, temp.second - 2) = p;
-					m_board(temp.first, temp.second) = nullptr;
-				}
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first - 2, temp.second - 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
 			}
 			if (m_board.Npos_of(p) == 1)
 			{
@@ -386,47 +362,88 @@ namespace Draughts
 		}
 		void King(Piece* p)
 		{
-			while (eatable_left_down(p) || eatable_left_up(p) || eatable_right_down(p) || eatable_right_up(p))
+			if (eatable_left_up(p))
 			{
-				if (eatable_left_up(p))
-				{
-					delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
-					m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
+				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
 
-					std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-					m_board(temp.first - 2, temp.second + 2) = p;
-					m_board(temp.first, temp.second) = nullptr;
-				}
-				else if (eatable_right_up(p))
-				{
-					delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
-					m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first - 2, temp.second + 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
+			}
+			else if (eatable_left_down(p))
+			{
+				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
 
-					std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-					m_board(temp.first + 2, temp.second + 2) = p;
-					m_board(temp.first, temp.second) = nullptr;
-				}
-				else if (eatable_left_down(p))
-				{
-					delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
-					m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
-
-					std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-					m_board(temp.first - 2, temp.second - 2) = p;
-					m_board(temp.first, temp.second) = nullptr;
-				}
-				else
-				{
-					delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
-					m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
-
-					std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-					m_board(temp.first + 2, temp.second - 2) = p;
-					m_board(temp.first, temp.second) = nullptr;
-				}
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first - 2, temp.second - 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
 			}
 		}
 	};
+	template<unsigned int size> class RightEat :public Eat_base < size >
+	{
+	public:
+		RightEat(Field<size>& f) :Eat_base<size>(f)
+		{ }
+		void WhitePiece(Piece* p)
+		{
+			if (eatable_right_up(p))
+			{
+				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
+				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
+
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first + 2, temp.second + 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
+			}
+			if (m_board.Npos_of(p) == size)
+			{
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
+				p->~Piece();
+			}
+		}
+		void BlackPiece(Piece* p)
+		{
+			if (eatable_right_down(p))
+			{
+				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
+				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
+
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first + 2, temp.second - 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
+			}
+			if (m_board.Npos_of(p) == 1)
+			{
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
+				p->~Piece();
+			}
+		}
+		void King(Piece* p)
+		{
+			if (eatable_right_up(p))
+			{
+				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
+				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
+
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first + 2, temp.second + 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
+			}
+			else if (eatable_right_down(p))
+			{
+				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
+				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
+
+				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
+				m_board(temp.first + 2, temp.second - 2) = p;
+				m_board(temp.first, temp.second) = nullptr;
+			}
+		}
+	};
+
 	template<unsigned int size> class MoveFinder :public Eat_base < size >, Move_base < size > 
 	{ // Should go through all pieces on one side at a time, then clear buffers
 	public:
@@ -434,40 +451,63 @@ namespace Draughts
 		{ }
 		void WhitePiece(Piece* p)
 		{
-			if (eatable_right_up(p) || eatable_left_up(p))
-				m_eaties.insert(p);
-			else if (movable_right_up(p) || movable_left_up(p))
-				m_movies.insert(p);
+			if (eatable_right_up(p))
+				m_reaties.insert(p);
+			else if (eatable_left_up(p))
+				m_leaties.insert(p);
+			else if (movable_right_up(p))
+				m_rmovies.insert(p);
+			else if (movable_left_up(p))
+				m_lmovies.insert(p);
 		}
 		void BlackPiece(Piece* p)
 		{
-			if (eatable_right_down(p) || eatable_left_down(p))
-				m_eaties.insert(p);
-			else if (movable_right_down(p) || movable_left_down(p))
-				m_movies.insert(p);
+			if (eatable_right_down(p))
+				m_reaties.insert(p);
+			else if (eatable_left_down(p))
+				m_leaties.insert(p);
+			else if (movable_right_down(p))
+				m_rmovies.insert(p);
+			else if (movable_left_down(p))
+				m_lmovies.insert(p);
 		}
 		void King(Piece* p)
 		{
-			if (eatable_right_down(p) || eatable_left_down(p) || eatable_right_up(p) || eatable_left_up(p))
-				m_eaties.insert(p);
-			else if (movable_right_down(p) || movable_left_down(p) || movable_right_up(p) || movable_left_up(p))
-				m_movies.insert(p);
+			if (eatable_right_down(p) || eatable_right_up(p))
+				m_reaties.insert(p);
+			else if (eatable_left_down(p) || eatable_left_up(p))
+				m_leaties.insert(p);
+			else if (movable_right_down(p) || movable_right_up(p))
+				m_rmovies.insert(p);
+			else if (movable_left_down(p) || movable_left_up(p))
+				m_lmovies.insert(p);
 		}
-		std::set<Piece*> Eaties() const
+		std::set<Piece*> REaties() const
 		{
-			return m_eaties;
+			return m_reaties;
 		}
-		std::set<Piece*> Movies() const
+		std::set<Piece*> LEaties() const
 		{
-			return m_movies;
+			return m_leaties;
+		}
+		std::set<Piece*> RMovies() const
+		{
+			return m_rmovies;
+		}
+		std::set<Piece*> LMovies() const
+		{
+			return m_lmovies;
 		}
 		void Clear()
 		{
 			m_eaties.clear();
-			m_movies.clear();
+			m_rmovies.clear();
+			m_lmovies.clear();
 		}
 	private:
-		std::set<Piece*> m_eaties;
-		std::set<Piece*> m_movies;
+		std::set<Piece*> m_reaties;
+		std::set<Piece*> m_leaties;
+		std::set<Piece*> m_rmovies;
+		std::set<Piece*> m_lmovies;
 	};
 }
