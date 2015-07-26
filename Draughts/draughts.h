@@ -19,9 +19,10 @@ namespace Draughts
 	//-------------------------------------------------------------------------------------------------
 	class Piece
 	{
-	public:
+	protected:
 		Piece(bool white, bool king) :m_white(white), m_king(king)
 		{ }
+	public:
 		virtual ~Piece()
 		{ }
 		virtual void Accept(Operation&) = 0;
