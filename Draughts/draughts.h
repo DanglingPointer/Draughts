@@ -279,11 +279,7 @@ namespace Draughts
 		}
 		void King(Piece* p)
 		{
-			int steps;
-			if (p->White())
-				steps = (rand() % 2) ? -1 : 1;// stub, determines direction
-			else
-				steps = (rand() % 2) ? -1 : 1; // stub, determines direction
+			int steps = (int)(dynamic_cast<Draughts::King*>(p)->dirn); // either -1 or 1
 
 			if (m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + steps) && m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + steps) == nullptr)
 			{
