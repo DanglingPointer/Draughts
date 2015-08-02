@@ -1,6 +1,6 @@
 #include<iostream>
-#include"draughts.h"
 #define FSIZE 10
+#include"draughts.h"
 using namespace Draughts;
 
 int main()
@@ -28,6 +28,9 @@ int main()
 
 	Field<FSIZE> f2(f);
 	std::cout << f2;
+
+	CmdPlay play;
+	//play.Run();
 
 	system("pause");
 	return 0;

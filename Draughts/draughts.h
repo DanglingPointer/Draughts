@@ -46,6 +46,11 @@ namespace Draughts
 			out << (p.White() ? 'ê' : 'ô');
 		return out;
 	}
+	enum Direction
+	{
+		UP = 1,
+		DOWN = -1
+	};
 	class King :public Piece
 	{
 	public:
@@ -55,6 +60,7 @@ namespace Draughts
 		{
 			op.King(this);
 		}
+		Direction dirn;
 	};
 	class WhitePiece :public Piece
 	{
@@ -144,20 +150,25 @@ namespace Draughts
 	};
 	template<unsigned int fsize> std::ostream& operator << (std::ostream& out, const Field<fsize>& f)
 	{
-		out << ' ';
+		out << "    ";
 		for (unsigned int i = 0; i < fsize * 2 - 1; ++i)
 			out << '=';
 		out << '\n';
 		for (unsigned int npos = fsize; npos > 0; --npos)
 		{
+			if (npos < 10) out << ' ';
+			out << npos << ' ';
 			for (char lpos = 'a'; lpos < 'a' + fsize; ++lpos)
 				if (f(lpos, npos) != nullptr)
 					out << ' ' << *f(lpos, npos);
 				else
 					out << " -";
-			out << '\n';
+			out << "\n";
 		}
-		out << ' ';
+		out << "   ";
+		for (char lpos = 'a'; lpos < 'a' + fsize; ++lpos)
+			out << ' ' << lpos;
+		out << "\n    ";
 		for (unsigned int i = 0; i < fsize * 2 - 1; ++i)
 			out << '=';
 		out << '\n';
@@ -317,11 +328,7 @@ namespace Draughts
 		}
 		void King(Piece* p)
 		{
-			int steps; // either -1 or 1
-			if (p->White())
-				steps = (rand() % 2) ? -1 : 1; // stub, determines direction
-			else
-				steps = (rand() % 2) ? -1 : 1; // stub, determines direction
+			int steps = (int)(dynamic_cast<Draughts::King*>(p)->dirn); // either -1 or 1
 
 			if (m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) && m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) == nullptr)
 			{
@@ -371,9 +378,10 @@ namespace Draughts
 				p->~Piece();
 			}
 		}
-		void King(Piece* p)
+		void King(Piece* k)
 		{
-			if (jumpable_right_up(p))
+			Draughts::King* p = dynamic_cast<Draughts::King*>(k);
+			if (jumpable_right_up(p) && p->dirn == UP)
 			{
 				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
 				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
@@ -382,7 +390,7 @@ namespace Draughts
 				m_board(temp.first + 2, temp.second + 2) = p;
 				m_board(temp.first, temp.second) = nullptr;
 			}
-			else if (jumpable_right_down(p))
+			else if (jumpable_right_down(p) && p->dirn == DOWN)
 			{
 				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
 				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
@@ -432,9 +440,10 @@ namespace Draughts
 				p->~Piece();
 			}
 		}
-		void King(Piece* p)
+		void King(Piece* k)
 		{
-			if (jumpable_left_up(p))
+			Draughts::King* p = dynamic_cast<Draughts::King*>(k);
+			if (jumpable_left_up(p) && p->dirn == UP)
 			{
 				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
@@ -443,7 +452,7 @@ namespace Draughts
 				m_board(temp.first - 2, temp.second + 2) = p;
 				m_board(temp.first, temp.second) = nullptr;
 			}
-			else if (jumpable_left_down(p))
+			else if (jumpable_left_down(p) && p->dirn == DOWN)
 			{
 				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
@@ -533,5 +542,51 @@ namespace Draughts
 		std::set<Piece*> m_ljumpies;
 		std::set<Piece*> m_rmovies;
 		std::set<Piece*> m_lmovies;		// those in position to move to the left
+	};
+	//------------------------------------------------------------------------------------------------
+#include<iostream>
+	class CmdPlay
+	{
+	public:
+		CmdPlay() :m_lj(m_f), m_rj(m_f), m_lm(m_f), m_rm(m_f), m_mf(m_f)
+		{ }
+		void Run() // no AI so far
+		{
+			char letter, dirn;
+			unsigned int num;
+
+			while (1)
+			{
+				std::cout << m_f;
+				std::cout << "Enter letter, number, direction(l/r): ";
+				std::cin >> letter >> num >> dirn;
+
+				if (m_f(letter, num) != nullptr && m_f(letter, num)->White())
+				{
+					if (m_f(letter, num)->King())
+					{
+						char vdirn;
+						std::cout << "Enter king's vertical direction (u/d): ";
+						std::cin >> vdirn;
+						King* p = dynamic_cast<King*>(m_f(letter, num));
+						(vdirn == 'u') ? p->dirn = UP : p->dirn = DOWN;
+					}
+					m_f(letter, num)->Accept(m_mf);
+					if (dirn == 'r')
+						(m_mf.RJumpies().empty()) ? m_f(letter, num)->Accept(m_rm) : m_f(letter, num)->Accept(m_rj);
+					else if (dirn == 'l')
+						(m_mf.LJumpies().empty()) ? m_f(letter, num)->Accept(m_lm) : m_f(letter, num)->Accept(m_lj);
+					else
+						break;
+				}
+			}
+		}
+	private:
+		Field<FSIZE> m_f;
+		LeftJump<FSIZE> m_lj;
+		RightJump<FSIZE> m_rj;
+		LeftMove<FSIZE> m_lm;
+		RightMove<FSIZE> m_rm;
+		MoveFinder<FSIZE> m_mf;
 	};
 }
