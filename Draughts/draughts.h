@@ -260,7 +260,7 @@ namespace Draughts
 			if (m_board.Npos_of(p) == size)
 			{
 				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
-				p->~Piece();
+				delete p;
 			}
 		}
 		void BlackPiece(Piece* p)
@@ -274,7 +274,7 @@ namespace Draughts
 			if (m_board.Npos_of(p) == 1)
 			{
 				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
-				p->~Piece();
+				delete p;
 			}
 		}
 		void King(Piece* p)
@@ -305,7 +305,7 @@ namespace Draughts
 			if (m_board.Npos_of(p) == size)
 			{
 				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
-				p->~Piece();
+				delete p;
 			}
 		}
 		void BlackPiece(Piece* p)
@@ -319,14 +319,15 @@ namespace Draughts
 			if (m_board.Npos_of(p) == 1)
 			{
 				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
-				p->~Piece();
+				delete p;
 			}
 		}
 		void King(Piece* p)
 		{
 			int steps = (int)(dynamic_cast<Draughts::King*>(p)->dirn); // either -1 or 1
 
-			if (m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) && m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) == nullptr)
+			if (m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) && 
+				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) == nullptr)
 			{
 				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
 				m_board(temp.first - 1, temp.second + steps) = p;
@@ -354,7 +355,7 @@ namespace Draughts
 			if (m_board.Npos_of(p) == size)
 			{
 				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
-				p->~Piece();
+				delete p;
 			}
 		}
 		void BlackPiece(Piece* p)
@@ -371,13 +372,13 @@ namespace Draughts
 			if (m_board.Npos_of(p) == 1)
 			{
 				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
-				p->~Piece();
+				delete p;
 			}
 		}
 		void King(Piece* k)
 		{
 			Draughts::King* p = dynamic_cast<Draughts::King*>(k);
-			if (jumpable_right_up(p) && p->dirn == UP)
+			if (p->dirn == UP && jumpable_right_up(p))
 			{
 				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
 				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
@@ -386,7 +387,7 @@ namespace Draughts
 				m_board(temp.first + 2, temp.second + 2) = p;
 				m_board(temp.first, temp.second) = nullptr;
 			}
-			else if (jumpable_right_down(p) && p->dirn == DOWN)
+			else if (p->dirn == DOWN && jumpable_right_down(p))
 			{
 				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
 				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
@@ -416,7 +417,7 @@ namespace Draughts
 			if (m_board.Npos_of(p) == size)
 			{
 				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
-				p->~Piece();
+				delete p;
 			}
 		}
 		void BlackPiece(Piece* p)
@@ -433,13 +434,13 @@ namespace Draughts
 			if (m_board.Npos_of(p) == 1)
 			{
 				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
-				p->~Piece();
+				delete p;
 			}
 		}
 		void King(Piece* k)
 		{
 			Draughts::King* p = dynamic_cast<Draughts::King*>(k);
-			if (jumpable_left_up(p) && p->dirn == UP)
+			if (p->dirn == UP && jumpable_left_up(p))
 			{
 				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
@@ -448,7 +449,7 @@ namespace Draughts
 				m_board(temp.first - 2, temp.second + 2) = p;
 				m_board(temp.first, temp.second) = nullptr;
 			}
-			else if (jumpable_left_down(p) && p->dirn == DOWN)
+			else if (p->dirn == DOWN && jumpable_left_down(p))
 			{
 				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
