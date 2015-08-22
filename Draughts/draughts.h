@@ -1,8 +1,10 @@
 #pragma once
-#include<cctype>
 #include<utility>
-#include<ostream>
 #include<set>
+
+#ifdef _CONSOLE
+#include<iostream>
+#endif
 
 // Rules: https://en.wikipedia.org/wiki/English_draughts
 
@@ -38,6 +40,7 @@ namespace Draughts
 		bool m_white;
 		bool m_king;
 	};
+#ifdef _CONSOLE
 	std::ostream& operator << (std::ostream& out, const Piece& p)
 	{
 		if (!p.King())
@@ -46,6 +49,7 @@ namespace Draughts
 			out << (p.White() ? 'ê' : 'ô');
 		return out;
 	}
+#endif
 	enum Direction
 	{
 		UP = 1,
@@ -117,17 +121,20 @@ namespace Draughts
 				if (m_field[i] != nullptr)
 					delete m_field[i];
 		}
+		// Lower case letter required
 		Piece*& operator() (char letter, unsigned int num)
 		{
-			return m_field[(num - 1) * size + (std::tolower(letter) - 'a')];
+			return m_field[(num - 1) * size + (letter - 'a')];
 		}
+		// Lower case letter required
 		Piece* operator() (char letter, unsigned int num) const
 		{
-			return m_field[(num - 1) * size + (std::tolower(letter) - 'a')];
+			return m_field[(num - 1) * size + (letter - 'a')];
 		}
+		// Lower case letter required
 		bool Inside(char letter, unsigned int num) const
 		{
-			return std::tolower(letter) >= 'a' && std::tolower(letter) < 'a' + size && num > 0 && num <= size;
+			return letter >= 'a' && letter < 'a' + size && num > 0 && num <= size;
 		}
 		char Lpos_of(Piece* p) const
 		{
@@ -148,6 +155,7 @@ namespace Draughts
 	private:
 		Piece* m_field[size*size];
 	};
+#ifdef _CONSOLE
 	template<unsigned int fsize> std::ostream& operator << (std::ostream& out, const Field<fsize>& f)
 	{
 		out << "    ";
@@ -174,6 +182,7 @@ namespace Draughts
 		out << '\n';
 		return out;
 	}
+#endif
 	//------------------------------------------------------------------------------------------------
 	template<unsigned int size> class MoveTool
 	{
@@ -541,7 +550,11 @@ namespace Draughts
 		std::set<Piece*> m_lmovies;		// those in position to move to the left
 	};
 	//------------------------------------------------------------------------------------------------
-#include<iostream>
+#ifndef FSIZE
+#define FSIZE 8
+#endif
+
+#ifdef _CONSOLE
 	class CmdPlay
 	{
 	public:
@@ -579,11 +592,17 @@ namespace Draughts
 			}
 		}
 	private:
+		// Board:
+
 		Field<FSIZE> m_f;
+
+		// Visitors:
+
 		LeftJump<FSIZE> m_lj;
 		RightJump<FSIZE> m_rj;
 		LeftMove<FSIZE> m_lm;
 		RightMove<FSIZE> m_rm;
 		MoveFinder<FSIZE> m_mf;
 	};
+#endif // _CONSOLE
 }
