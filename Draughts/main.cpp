@@ -1,5 +1,6 @@
 #include"basic_classes.h"
 #include"engine.h"
+//#define FSIZE 10
 
 using namespace Draughts;
 
@@ -13,8 +14,8 @@ int main()
 	BlackKing* bp = new BlackKing;
 	wp->dirn = UP;
 	bp->dirn = DOWN;
-	f('i', 5) = wp;
-	f('i', 6) = bp;
+	f('g', 4) = wp;
+	f('g', 5) = bp;
 	std::cout << f;
 
 	RightMove<FSIZE> rm(f);
@@ -23,9 +24,12 @@ int main()
 	RightJump<FSIZE> rj(f);
 	MoveFinder<FSIZE> mf(f);
 
-	f('i', 5)->Accept(rm);
-	f('i', 6)->Accept(lm);
+	f('g', 4)->Accept(rm);
+	f('g', 5)->Accept(lm);
 	std::cout << f;
+	f.Reset();
+	std::cout << f;
+	//---
 
 
 	//f('b', 4)->Accept(mf);

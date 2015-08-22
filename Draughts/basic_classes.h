@@ -88,32 +88,22 @@ namespace Draughts
 	template<unsigned int size> class Field
 	{
 	public:
-		Field()
+		Field<size>()
+		{
+			Initialize();
+		}
+		Field<size>(const Field<size>& f)
+		{
+			Copy(f);
+		}
+		Field<size>& operator = (const Field<size>& f)
 		{
 			for (int i = 0; i < size*size; ++i)
-				m_field[i] = nullptr;
-
-			for (unsigned int row = 1; row < size / 2; ++row)
-				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
-					operator()(letter, row) = new WhitePiece;
-
-			for (unsigned int row = size; row > size / 2 + 1; --row)
-				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
-					operator()(letter, row) = new BlackPiece;
+				if (*(m_field + i) != nullptr)
+					delete *(m_field + i);
+			Copy(f);
 		}
-		Field(const Field<size>& f)
-		{
-			for (int i = 0; i < size*size; ++i)
-			{
-				if (f.m_field[i] == nullptr)
-					m_field[i] = nullptr;
-				else if (!f.m_field[i]->King())
-					f.m_field[i]->White() ? (m_field[i] = new WhitePiece) : (m_field[i] = new BlackPiece);
-				else
-					f.m_field[i]->White() ? (m_field[i] = new WhiteKing) : (m_field[i] = new BlackKing);
-			}
-		}
-		~Field()
+		~Field<size>()
 		{
 			for (int i = 0; i < size*size; ++i)
 				if (m_field[i] != nullptr)
@@ -150,21 +140,65 @@ namespace Draughts
 						return num;
 			return 0;
 		}
-		bool Won(bool& color) const
+		bool Win(bool& color) const
 		{
 			std::set<bool> temp;
 			for (int i = 0; i < size*size; ++i)
 				if (*(m_field + i) != nullptr)
 					temp.insert((*(m_field + i))->White());
-			if (temp.size() == 2)
-				return false;
-			else
+			if (temp.size() == 1)
 			{
 				color = *(temp.begin());
 				return true;
 			}
+			return false;
+		}
+		bool Draw() const
+		{
+			unsigned int num_white = 0, num_black = 0;
+			for (int i = 0; i < size*size; ++i)
+			{
+				Piece* p = *(m_field + i);
+				if (p != nullptr)
+					p->White() ? ++num_white : ++num_black;
+			}
+			if (num_white == 1 && num_black == 1)
+				return true;
+			return false;
+		}
+		void Reset()
+		{
+			for (int i = 0; i < size*size; ++i)
+				if (*(m_field + i) != nullptr)
+					delete *(m_field + i);
+			Initialize();
 		}
 	private:
+		void Initialize()
+		{
+			for (int i = 0; i < size*size; ++i)
+				m_field[i] = nullptr;
+
+			for (unsigned int row = 1; row < size / 2; ++row)
+				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
+					operator()(letter, row) = new WhitePiece;
+
+			for (unsigned int row = size; row > size / 2 + 1; --row)
+				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
+					operator()(letter, row) = new BlackPiece;
+		}
+		void Copy(const Field<size>& f)
+		{
+			for (int i = 0; i < size*size; ++i)
+			{
+				if (f.m_field[i] == nullptr)
+					m_field[i] = nullptr;
+				else if (!f.m_field[i]->King())
+					f.m_field[i]->White() ? (m_field[i] = new WhitePiece) : (m_field[i] = new BlackPiece);
+				else
+					f.m_field[i]->White() ? (m_field[i] = new WhiteKing) : (m_field[i] = new BlackKing);
+			}
+		}
 		Piece* m_field[size*size];
 	};
 #ifdef _CONSOLE
