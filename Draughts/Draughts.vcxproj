@@ -144,10 +144,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="draughts.h" />
+    <ClInclude Include="basic_classes.h" />
+    <ClInclude Include="engine.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="draughts.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

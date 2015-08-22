@@ -15,12 +15,15 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="draughts.h">
+    <ClInclude Include="basic_classes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="engine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="draughts.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

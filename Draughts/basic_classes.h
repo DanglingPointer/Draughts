@@ -1,4 +1,6 @@
 #pragma once
+// Rules: https://en.wikipedia.org/wiki/English_draughts
+
 #include<utility>
 #include<set>
 
@@ -6,7 +8,12 @@
 #include<iostream>
 #endif
 
-// Rules: https://en.wikipedia.org/wiki/English_draughts
+#define WHITE true
+#define BLACK false
+#define KING true
+#define MAN false
+#define UP 1
+#define DOWN -1
 
 namespace Draughts
 {
@@ -50,42 +57,33 @@ namespace Draughts
 		return out;
 	}
 #endif
-	enum Direction
-	{
-		UP = 1,
-		DOWN = -1
-	};
-	class King :public Piece
+	typedef int Direction;
+	template <bool color> class King :public Piece
 	{
 	public:
-		King(bool white) :Piece(white, true)
+		King<color>() :Piece(color, KING)
 		{ }
+		Direction dirn;
 		void Accept(Operation& op)
 		{
 			op.King(this);
 		}
-		Direction dirn;
 	};
-	class WhitePiece :public Piece
+	template <bool color> class Man :public Piece
 	{
 	public:
-		WhitePiece() :Piece(true, false)
+		Man<color>():Piece(color, MAN)
 		{ }
 		void Accept(Operation& op)
 		{
-			op.WhitePiece(this);
+			if (White()) op.WhitePiece(this);
+			else op.BlackPiece(this);
 		}
 	};
-	class BlackPiece :public Piece
-	{
-	public:
-		BlackPiece() :Piece(false, false)
-		{ }
-		void Accept(Operation& op)
-		{
-			op.BlackPiece(this);
-		}
-	};
+	typedef King<WHITE> WhiteKing;
+	typedef King<BLACK> BlackKing;
+	typedef Man<WHITE> WhitePiece;
+	typedef Man<BLACK> BlackPiece;
 	//-------------------------------------------------------------------------------------------------
 	template<unsigned int size> class Field
 	{
@@ -112,7 +110,7 @@ namespace Draughts
 				else if (!f.m_field[i]->King())
 					f.m_field[i]->White() ? (m_field[i] = new WhitePiece) : (m_field[i] = new BlackPiece);
 				else
-					f.m_field[i]->White() ? (m_field[i] = new King(true)) : (m_field[i] = new King(false));
+					f.m_field[i]->White() ? (m_field[i] = new WhiteKing) : (m_field[i] = new BlackKing);
 			}
 		}
 		~Field()
@@ -151,6 +149,20 @@ namespace Draughts
 					if (operator()(letter, num) == p)
 						return num;
 			return 0;
+		}
+		bool Won(bool& color) const
+		{
+			std::set<bool> temp;
+			for (int i = 0; i < size*size; ++i)
+				if (*(m_field + i) != nullptr)
+					temp.insert((*(m_field + i))->White());
+			if (temp.size() == 2)
+				return false;
+			else
+			{
+				color = *(temp.begin());
+				return true;
+			}
 		}
 	private:
 		Piece* m_field[size*size];
@@ -268,7 +280,7 @@ namespace Draughts
 			}
 			if (m_board.Npos_of(p) == size)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new WhiteKing;
 				delete p;
 			}
 		}
@@ -282,13 +294,14 @@ namespace Draughts
 			}
 			if (m_board.Npos_of(p) == 1)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new BlackKing;
 				delete p;
 			}
 		}
 		void King(Piece* p)
 		{
-			int steps = (int)(dynamic_cast<Draughts::King*>(p)->dirn); // either -1 or 1
+			int steps; // either -1 or 1
+			steps = (p->White() ? dynamic_cast<WhiteKing*>(p)->dirn : dynamic_cast<BlackKing*>(p)->dirn);
 
 			if (m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + steps) && m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + steps) == nullptr)
 			{
@@ -313,7 +326,7 @@ namespace Draughts
 			}
 			if (m_board.Npos_of(p) == size)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new WhiteKing;
 				delete p;
 			}
 		}
@@ -327,13 +340,14 @@ namespace Draughts
 			}
 			if (m_board.Npos_of(p) == 1)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new BlackKing;
 				delete p;
 			}
 		}
 		void King(Piece* p)
 		{
-			int steps = (int)(dynamic_cast<Draughts::King*>(p)->dirn); // either -1 or 1
+			int steps; // either -1 or 1
+			steps = (p->White() ? dynamic_cast<WhiteKing*>(p)->dirn : dynamic_cast<BlackKing*>(p)->dirn);
 
 			if (m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) && 
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) == nullptr)
@@ -363,7 +377,7 @@ namespace Draughts
 			}
 			if (m_board.Npos_of(p) == size)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new WhiteKing;
 				delete p;
 			}
 		}
@@ -380,14 +394,16 @@ namespace Draughts
 			}
 			if (m_board.Npos_of(p) == 1)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new BlackKing;
 				delete p;
 			}
 		}
-		void King(Piece* k)
+		void King(Piece* p)
 		{
-			Draughts::King* p = dynamic_cast<Draughts::King*>(k);
-			if (p->dirn == UP && jumpable_right_up(p))
+			Direction direction;
+			direction = (p->White() ? dynamic_cast<WhiteKing*>(p)->dirn : dynamic_cast<BlackKing*>(p)->dirn);
+
+			if (direction == UP && jumpable_right_up(p))
 			{
 				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
 				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
@@ -396,7 +412,7 @@ namespace Draughts
 				m_board(temp.first + 2, temp.second + 2) = p;
 				m_board(temp.first, temp.second) = nullptr;
 			}
-			else if (p->dirn == DOWN && jumpable_right_down(p))
+			else if (direction == DOWN && jumpable_right_down(p))
 			{
 				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
 				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
@@ -425,7 +441,7 @@ namespace Draughts
 			}
 			if (m_board.Npos_of(p) == size)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(true);
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new WhiteKing;
 				delete p;
 			}
 		}
@@ -442,14 +458,16 @@ namespace Draughts
 			}
 			if (m_board.Npos_of(p) == 1)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new Draughts::King(false);
+				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new BlackKing;
 				delete p;
 			}
 		}
-		void King(Piece* k)
+		void King(Piece* p)
 		{
-			Draughts::King* p = dynamic_cast<Draughts::King*>(k);
-			if (p->dirn == UP && jumpable_left_up(p))
+			Direction direction;
+			direction = (p->White() ? dynamic_cast<WhiteKing*>(p)->dirn : dynamic_cast<BlackKing*>(p)->dirn);
+
+			if (direction == UP && jumpable_left_up(p))
 			{
 				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
@@ -458,7 +476,7 @@ namespace Draughts
 				m_board(temp.first - 2, temp.second + 2) = p;
 				m_board(temp.first, temp.second) = nullptr;
 			}
-			else if (p->dirn == DOWN && jumpable_left_down(p))
+			else if (direction == DOWN && jumpable_left_down(p))
 			{
 				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
@@ -550,59 +568,4 @@ namespace Draughts
 		std::set<Piece*> m_lmovies;		// those in position to move to the left
 	};
 	//------------------------------------------------------------------------------------------------
-#ifndef FSIZE
-#define FSIZE 8
-#endif
-
-#ifdef _CONSOLE
-	class CmdPlay
-	{
-	public:
-		CmdPlay() :m_lj(m_f), m_rj(m_f), m_lm(m_f), m_rm(m_f), m_mf(m_f)
-		{ }
-		void Run() // no AI so far
-		{
-			char letter, dirn;
-			unsigned int num;
-
-			while (1)
-			{
-				std::cout << m_f;
-				std::cout << "Enter letter, number, direction(l/r): ";
-				std::cin >> letter >> num >> dirn;
-
-				if (m_f(letter, num) != nullptr && m_f(letter, num)->White())
-				{
-					if (m_f(letter, num)->King())
-					{
-						char vdirn;
-						std::cout << "Enter king's vertical direction (u/d): ";
-						std::cin >> vdirn;
-						King* p = dynamic_cast<King*>(m_f(letter, num));
-						(vdirn == 'u') ? p->dirn = UP : p->dirn = DOWN;
-					}
-					m_f(letter, num)->Accept(m_mf);
-					if (dirn == 'r')
-						(m_mf.RJumpies().empty()) ? m_f(letter, num)->Accept(m_rm) : m_f(letter, num)->Accept(m_rj);
-					else if (dirn == 'l')
-						(m_mf.LJumpies().empty()) ? m_f(letter, num)->Accept(m_lm) : m_f(letter, num)->Accept(m_lj);
-					else
-						break;
-				}
-			}
-		}
-	private:
-		// Board:
-
-		Field<FSIZE> m_f;
-
-		// Visitors:
-
-		LeftJump<FSIZE> m_lj;
-		RightJump<FSIZE> m_rj;
-		LeftMove<FSIZE> m_lm;
-		RightMove<FSIZE> m_rm;
-		MoveFinder<FSIZE> m_mf;
-	};
-#endif // _CONSOLE
-}
+} // namespace Draughts
