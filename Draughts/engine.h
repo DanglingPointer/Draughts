@@ -1,5 +1,7 @@
 #pragma once
 #include"basic_classes.h"
+#include<list>
+#include<stdexcept>
 
 #ifndef FSIZE
 #define FSIZE 8
@@ -69,23 +71,114 @@ namespace Draughts
 	{
 	public:
 		Field<FSIZE> board;
-		bool AIside;
 		Game() :m_side_set(false)
 		{ }
+		void set_AIside(bool AIside)
+		{
+			m_side_set = true;
+			m_AIside = AIside;
+		}
+		bool get_AIside() const
+		{
+			if (!m_side_set)
+				throw std::logic_error("AI side is not set");
+			return m_AIside;
+		}
 		void AITurn()
 		{
 			if (!m_side_set)
 				return;
 
-			// iterate through all possibilities
+			MoveFinder<FSIZE> mf(board);
+			for (char letter = 'a'; letter < 'a' + FSIZE; ++letter)
+				for (unsigned int num = 1; num <= FSIZE; ++num)
+				{
+					if (board(letter, num) != nullptr && board(letter, num)->White() == m_AIside)
+						board(letter, num)->Accept(mf);
+				}
+			std::set<Piece*> rjumpies = mf.RJumpies();
+			std::set<Piece*> ljumpies = mf.LJumpies();
+
+			std::list<Field<FSIZE>> draws;
+			bool jumped = false;
+			if (!rjumpies.empty())
+			{
+				jumped = true;
+				for (std::set<Piece*>::const_iterator it = rjumpies.begin(); it != rjumpies.end(); ++it)
+				{
+					Field<FSIZE> nboard(board);
+					RightJump<FSIZE> rj(nboard);
+					nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(rj);
+					res temp = AlphaBeta(nboard, (!m_AIside) );
+					if (temp == WIN)
+					{
+						board = nboard;
+						return;
+					}
+					if (temp == DRAW) draws.push_back(nboard);
+				}
+			}
+			if (!ljumpies.empty())
+			{
+				jumped = true;
+				for (std::set<Piece*>::const_iterator it = ljumpies.begin(); it != ljumpies.end(); ++it)
+				{
+					Field<FSIZE> nboard(board);
+					LeftJump<FSIZE> lj(nboard);
+					nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(lj);
+					res temp = AlphaBeta(nboard, (!m_AIside));
+					if (temp == WIN)
+					{
+						board = nboard;
+						return;
+					}
+					if (temp == DRAW) draws.push_back(nboard);
+				}
+			}
+			if (!jumped)
+			{
+				std::set<Piece*> rmovies = mf.RMovies();
+				std::set<Piece*> lmovies = mf.LMovies();
+				if (!rmovies.empty())
+					for (std::set<Piece*>::const_iterator it = rmovies.begin(); it != rmovies.end(); ++it)
+					{
+						Field<FSIZE> nboard(board);
+						RightMove<FSIZE> rm(nboard);
+						nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(rm);
+						res temp = AlphaBeta(nboard, (!m_AIside));
+						if (temp == WIN)
+						{
+							board = nboard;
+							return;
+						}
+						if (temp == DRAW) draws.push_back(nboard);
+					}
+				if (!lmovies.empty())
+					for (std::set<Piece*>::const_iterator it = lmovies.begin(); it != lmovies.end(); ++it)
+					{
+						Field<FSIZE> nboard(board);
+						LeftMove<FSIZE> lm(nboard);
+						nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(lm);
+						res temp = AlphaBeta(nboard, (!m_AIside));
+						if (temp == WIN)
+						{
+							board = nboard;
+							return;
+						}
+						if (temp == DRAW) draws.push_back(nboard);
+					}
+			} // !jumped
+			if (!draws.empty())
+				board = draws.back();
 		}
 	private:
+		bool m_AIside;
 		bool m_side_set;
 		res AlphaBeta(Field<FSIZE>& board, bool turn, res alpha = LOSS, res beta = WIN) // doesn't account for kings!
 		{
 			bool winning_side;
 			if (board.Win(winning_side))
-				return ((winning_side == AIside) ? WIN : LOSS);
+				return ((winning_side == m_AIside) ? WIN : LOSS);
 			if (board.Draw())
 				return DRAW;
 			//-------------------------------------
@@ -99,11 +192,13 @@ namespace Draughts
 			std::set<Piece*> rjumpies = mf.RJumpies();
 			std::set<Piece*> ljumpies = mf.LJumpies();
 			//-------------------------------------
-			if (turn == AIside)
+			if (turn == m_AIside)
 			{
 				res v = LOSS;
-				if (!rjumpies.empty() || !ljumpies.empty())
+				bool jumped = false;
+				if (!rjumpies.empty())
 				{
+					jumped = true;
 					for (std::set<Piece*>::const_iterator it = rjumpies.begin(); it != rjumpies.end(); ++it)
 					{
 						Field<FSIZE> nboard(board);
@@ -114,6 +209,10 @@ namespace Draughts
 						if (v > alpha) alpha = v;
 						if (beta <= alpha) return v;
 					}
+				}
+				if (!ljumpies.empty())
+				{
+					jumped = true;
 					for (std::set<Piece*>::const_iterator it = ljumpies.begin(); it != ljumpies.end(); ++it)
 					{
 						Field<FSIZE> nboard(board);
@@ -124,40 +223,43 @@ namespace Draughts
 						if (v > alpha) alpha = v;
 						if (beta <= alpha) return v;
 					}
-					return v;
 				}
-				else // if (rjumpies.empty() && ljumpies.empty())
+				if (!jumped)
 				{
 					std::set<Piece*> rmovies = mf.RMovies();
 					std::set<Piece*> lmovies = mf.LMovies();
-					for (std::set<Piece*>::const_iterator it = rmovies.begin(); it != rmovies.end(); ++it)
-					{
-						Field<FSIZE> nboard(board);
-						RightMove<FSIZE> rm(nboard);
-						nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(rm);
-						res temp = AlphaBeta(nboard, !turn, alpha, beta);
-						if (temp > v) v = temp;
-						if (v > alpha) alpha = v;
-						if (beta <= alpha) return v;
-					}
-					for (std::set<Piece*>::const_iterator it = lmovies.begin(); it != lmovies.end(); ++it)
-					{
-						Field<FSIZE> nboard(board);
-						LeftMove<FSIZE> lm(nboard);
-						nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(lm);
-						res temp = AlphaBeta(nboard, !turn, alpha, beta);
-						if (temp > v) v = temp;
-						if (v > alpha) alpha = v;
-						if (beta <= alpha) return v;
-					}
-					return v;
+					if (!rmovies.empty())
+						for (std::set<Piece*>::const_iterator it = rmovies.begin(); it != rmovies.end(); ++it)
+						{
+							Field<FSIZE> nboard(board);
+							RightMove<FSIZE> rm(nboard);
+							nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(rm);
+							res temp = AlphaBeta(nboard, !turn, alpha, beta);
+							if (temp > v) v = temp;
+							if (v > alpha) alpha = v;
+							if (beta <= alpha) return v;
+						}
+					if (!lmovies.empty())
+						for (std::set<Piece*>::const_iterator it = lmovies.begin(); it != lmovies.end(); ++it)
+						{
+							Field<FSIZE> nboard(board);
+							LeftMove<FSIZE> lm(nboard);
+							nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(lm);
+							res temp = AlphaBeta(nboard, !turn, alpha, beta);
+							if (temp > v) v = temp;
+							if (v > alpha) alpha = v;
+							if (beta <= alpha) return v;
+						}
 				}
+				return v;
 			}
 			else // if (turn != AIside)
 			{
 				res v = WIN;
-				if (!rjumpies.empty() || !ljumpies.empty())
+				bool jumped = false;
+				if (!rjumpies.empty())
 				{
+					jumped = true;
 					for (std::set<Piece*>::const_iterator it = rjumpies.begin(); it != rjumpies.end(); ++it)
 					{
 						Field<FSIZE> nboard(board);
@@ -168,6 +270,10 @@ namespace Draughts
 						if (v < beta) beta = v;
 						if (beta <= alpha) return v;
 					}
+				}
+				if (!ljumpies.empty())
+				{
+					jumped = true;
 					for (std::set<Piece*>::const_iterator it = ljumpies.begin(); it != ljumpies.end(); ++it)
 					{
 						Field<FSIZE> nboard(board);
@@ -178,35 +284,36 @@ namespace Draughts
 						if (v < beta) beta = v;
 						if (beta <= alpha) return v;
 					}
-					return v;
 				}
-				else // if (rjumpies.empty() && ljumpies.empty())
+				if (!jumped)
 				{
 					std::set<Piece*> rmovies = mf.RMovies();
 					std::set<Piece*> lmovies = mf.LMovies();
-					for (std::set<Piece*>::const_iterator it = rmovies.begin(); it != rmovies.end(); ++it)
-					{
-						Field<FSIZE> nboard(board);
-						RightMove<FSIZE> rm(nboard);
-						nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(rm);
-						res temp = AlphaBeta(nboard, !turn, alpha, beta);
-						if (temp < v) v = temp;
-						if (v < beta) beta = v;
-						if (beta <= alpha) return v;
-					}
-					for (std::set<Piece*>::const_iterator it = lmovies.begin(); it != lmovies.end(); ++it)
-					{
-						Field<FSIZE> nboard(board);
-						LeftMove<FSIZE> lm(nboard);
-						nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(lm);
-						res temp = AlphaBeta(nboard, !turn, alpha, beta);
-						if (temp < v) v = temp;
-						if (v < beta) beta = v;
-						if (beta <= alpha) return v;
-					}
-					return v;
-				} // if move or jump
-			} // if maximizing player
+					if (!rmovies.empty())
+						for (std::set<Piece*>::const_iterator it = rmovies.begin(); it != rmovies.end(); ++it)
+						{
+							Field<FSIZE> nboard(board);
+							RightMove<FSIZE> rm(nboard);
+							nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(rm);
+							res temp = AlphaBeta(nboard, !turn, alpha, beta);
+							if (temp < v) v = temp;
+							if (v < beta) beta = v;
+							if (beta <= alpha) return v;
+						}
+					if (!lmovies.empty())
+						for (std::set<Piece*>::const_iterator it = lmovies.begin(); it != lmovies.end(); ++it)
+						{
+							Field<FSIZE> nboard(board);
+							LeftMove<FSIZE> lm(nboard);
+							nboard(board.Lpos_of(*it), board.Npos_of(*it))->Accept(lm);
+							res temp = AlphaBeta(nboard, !turn, alpha, beta);
+							if (temp < v) v = temp;
+							if (v < beta) beta = v;
+							if (beta <= alpha) return v;
+						}
+				}
+				return v;
+			} // maximizing player
 		} // AlphaBeta
 	};
 }
