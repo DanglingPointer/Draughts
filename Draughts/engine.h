@@ -187,7 +187,7 @@ namespace Draughts
 			if (turn == m_AIside)
 			{
 				res v = LOSS;
-				if (!rjumpies.empty() || ljumpies.empty())
+				if (!rjumpies.empty() || !ljumpies.empty())
 				{
 					for (std::set<Piece*>::const_iterator it = rjumpies.begin(); it != rjumpies.end(); ++it)
 					{
