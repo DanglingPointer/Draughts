@@ -102,6 +102,7 @@ namespace Draughts
 				if (*(m_field + i) != nullptr)
 					delete *(m_field + i);
 			Copy(f);
+			return *this;
 		}
 		~Field<size>()
 		{
