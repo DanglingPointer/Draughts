@@ -15,10 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="basic_classes.h">
+    <ClInclude Include="..\WinDraughts\basic_classes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="engine.h">
+    <ClInclude Include="..\WinDraughts\engine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

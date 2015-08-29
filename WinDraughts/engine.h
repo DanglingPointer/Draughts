@@ -187,7 +187,7 @@ namespace Draughts
 			if (turn == m_AIside)
 			{
 				res v = LOSS;
-				if (!rjumpies.empty() || !ljumpies.empty())
+				if (!rjumpies.empty() || !ljumpies.empty()) // jump
 				{
 					for (std::set<Piece*>::const_iterator it = rjumpies.begin(); it != rjumpies.end(); ++it)
 					{
@@ -210,7 +210,7 @@ namespace Draughts
 						if (beta <= alpha) return v;
 					}
 				}
-				else
+				else // move
 				{
 					std::set<Piece*> rmovies = mf.RMovies();
 					std::set<Piece*> lmovies = mf.LMovies();
@@ -240,7 +240,7 @@ namespace Draughts
 			else // if (turn != AIside)
 			{
 				res v = WIN;
-				if (!rjumpies.empty() || !ljumpies.empty())
+				if (!rjumpies.empty() || !ljumpies.empty()) // jump
 				{
 					for (std::set<Piece*>::const_iterator it = rjumpies.begin(); it != rjumpies.end(); ++it)
 					{
@@ -263,7 +263,7 @@ namespace Draughts
 						if (beta <= alpha) return v;
 					}
 				}
-				else
+				else // move
 				{
 					std::set<Piece*> rmovies = mf.RMovies();
 					std::set<Piece*> lmovies = mf.LMovies();
