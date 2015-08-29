@@ -1,24 +1,27 @@
 #pragma once
 
-/*
+/**
 Preconditions:
-* operators <, >, <= as well as the assignment operator must work properly for Value_type
-* macros MAX_RESULT and MIN_RESULT must be defined as maximum and minimum values of Value_type, respectively
+* class Node_type represents game state
+* Value_type represents heuristic value of a node, set to int per default
+* operators <, >, <= as well as assignment operator and copy constructor must work properly for Value_type
+* macros MAX_RESULT and MIN_RESULT must be defined as maximum and minimum values of Value_type, respectively,
+  unless the default Value_type is used
 * realization of the abstract class INodeTool must be implemented
-*/
+**/
 
 #include<set>
 #include<utility>
 
-//#ifndef MAX_RESULT
-//#define MAX_RESULT 1
-//#endif
-//
-//#ifndef MIN_RESULT
-//#define MIN_RESULT -1
-//#endif
+#ifndef MAX_RESULT
+#define MAX_RESULT 1
+#endif
 
-template <typename Node_type, typename Value_type> class INodeTool
+#ifndef MIN_RESULT
+#define MIN_RESULT -1
+#endif
+
+template <typename Node_type, typename Value_type = int> class INodeTool
 {
 public:
 	typedef Node_type Node;
@@ -34,7 +37,7 @@ public:
 	virtual std::set<Node*> ChildNodes(bool maximizing_side) const = 0;
 };
 
-template <typename Node_type, typename Value_type> class AlphaBeta
+template <typename Node_type, typename Value_type = int> class AlphaBeta
 {
 public:
 	typedef INodeTool<Node_type, Value_type> Tool_type;
@@ -47,7 +50,7 @@ public:
 	AlphaBeta(const AlphaBeta<Tool_type>&) = delete;
 	
 	// Returns a pointer to a dynamic object representing best next state
-	// might return a nullptr if MIN_RESULT is defined wrong
+	// might return a nullptr if MIN_RESULT is defined incorrectly
 	Node* NextState(const Node& currentState, int depth = 0) const
 	{
 		m_pfunc->set_Node(currentState);

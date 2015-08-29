@@ -1,4 +1,3 @@
-#define ALPHABETA
 #include"MainFrame.h"
 
 class CMyWinApp :public CWinApp
