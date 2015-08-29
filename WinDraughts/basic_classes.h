@@ -15,6 +15,8 @@
 #define UP 1
 #define DOWN -1
 
+#define DirectionOf(ppiece) ((ppiece)->White() ? dynamic_cast<WhiteKing*>((ppiece))->dirn : dynamic_cast<BlackKing*>((ppiece))->dirn)
+
 namespace Draughts
 {
 	class Piece;
@@ -335,8 +337,7 @@ namespace Draughts
 		}
 		void King(Piece* p)
 		{
-			int steps; // either -1 or 1
-			steps = (p->White() ? dynamic_cast<WhiteKing*>(p)->dirn : dynamic_cast<BlackKing*>(p)->dirn);
+			int steps = DirectionOf(p);
 
 			if (m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + steps) && m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + steps) == nullptr)
 			{
@@ -381,8 +382,7 @@ namespace Draughts
 		}
 		void King(Piece* p)
 		{
-			int steps; // either -1 or 1
-			steps = (p->White() ? dynamic_cast<WhiteKing*>(p)->dirn : dynamic_cast<BlackKing*>(p)->dirn);
+			int steps = DirectionOf(p);
 
 			if (m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) && 
 				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) == nullptr)
@@ -435,8 +435,7 @@ namespace Draughts
 		}
 		void King(Piece* p)
 		{
-			Direction direction;
-			direction = (p->White() ? dynamic_cast<WhiteKing*>(p)->dirn : dynamic_cast<BlackKing*>(p)->dirn);
+			Direction direction = DirectionOf(p);
 
 			if (direction == UP && jumpable_right_up(p))
 			{
@@ -499,8 +498,7 @@ namespace Draughts
 		}
 		void King(Piece* p)
 		{
-			Direction direction;
-			direction = (p->White() ? dynamic_cast<WhiteKing*>(p)->dirn : dynamic_cast<BlackKing*>(p)->dirn);
+			Direction direction = DirectionOf(p);
 
 			if (direction == UP && jumpable_left_up(p))
 			{

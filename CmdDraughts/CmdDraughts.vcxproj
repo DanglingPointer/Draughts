@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\WinDraughts\AlphaBeta.h" />
     <ClInclude Include="..\WinDraughts\basic_classes.h" />
     <ClInclude Include="..\WinDraughts\engine.h" />
   </ItemGroup>

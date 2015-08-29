@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AlphaBeta.h" />
     <ClInclude Include="basic_classes.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="MainFrame.h" />
