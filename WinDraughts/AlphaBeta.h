@@ -34,7 +34,7 @@ public:
 	virtual Value NodeValue() const = 0;
 	// @returns true if the node is terminal, false otherwise
 	virtual bool TerminalNode() const = 0;
-	// @returns all child nodes of the given node
+	// @returns a set containing all child nodes of the given node
 	virtual std::set<Node*> ChildNodes(bool maximizing_side) const = 0;
 };
 
@@ -46,7 +46,7 @@ public:
 	typedef typename Tool_type::Value Value;
 
 	// without_depth should be true when no depth restrictions are applied
-	explicit AlphaBeta(Tool_type* ptool, bool without_depth = true) : m_pfunc(ptool), m_with_depth(!without_depth)
+	AlphaBeta(Tool_type* ptool, bool without_depth = true) : m_pfunc(ptool), m_with_depth(!without_depth)
 	{ }
 	AlphaBeta(const AlphaBeta<Tool_type>&) = delete;
 	
@@ -110,7 +110,6 @@ private:
 				}
 			}
 		}
-
 		for (std::set<Node*>::const_iterator it = childs.begin(); it != childs.end(); ++it)
 			delete *it;
 		return v;
