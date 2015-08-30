@@ -29,7 +29,7 @@ namespace Draughts
 	class BoardTool :public DraughtsTool
 	{
 	public:
-		BoardTool(bool color) : m_pnode(nullptr), m_AIside(color)
+		explicit BoardTool(bool& color) : m_pnode(nullptr), m_AIside(color)
 		{ }
 		void set_Node(Board* board)
 		{
@@ -71,26 +71,24 @@ namespace Draughts
 				for (std::set<Piece*>::const_iterator it = rjumpies.begin(); it != rjumpies.end(); ++it)
 				{
 					if ((*it)->King())
-						DirectionOf(*it) = UP;
-					jump_iterator_func(temp, board, *it, pop);
-					if ((*it)->King())
 					{
-						DirectionOf(*it) = DOWN;
+						DirectionOf(*it) = UP;
 						jump_iterator_func(temp, board, *it, pop);
+						DirectionOf(*it) = DOWN;
 					}
+					jump_iterator_func(temp, board, *it, pop);
 				}
 				delete pop;
 				pop = new LJump(board);
 				for (std::set<Piece*>::const_iterator it = ljumpies.begin(); it != ljumpies.end(); ++it)
 				{
 					if ((*it)->King())
-						DirectionOf(*it) = UP;
-					jump_iterator_func(temp, board, *it, pop);
-					if ((*it)->King())
 					{
-						DirectionOf(*it) = DOWN;
+						DirectionOf(*it) = UP;
 						jump_iterator_func(temp, board, *it, pop);
+						DirectionOf(*it) = DOWN;
 					}
+					jump_iterator_func(temp, board, *it, pop);
 				}
 				delete pop;
 			}
@@ -102,26 +100,24 @@ namespace Draughts
 				for (std::set<Piece*>::const_iterator it = rmovies.begin(); it != rmovies.end(); ++it)
 				{
 					if ((*it)->King())
-						DirectionOf(*it) = UP;
-					move_iterator_func(temp, board, *it, pop);
-					if ((*it)->King())
 					{
-						DirectionOf(*it) = DOWN;
+						DirectionOf(*it) = UP;
 						move_iterator_func(temp, board, *it, pop);
+						DirectionOf(*it) = DOWN;
 					}
+					move_iterator_func(temp, board, *it, pop);
 				}
 				delete pop;
 				pop = new LMove(board);
 				for (std::set<Piece*>::const_iterator it = lmovies.begin(); it != lmovies.end(); ++it)
 				{
 					if ((*it)->King())
-						DirectionOf(*it) = UP;
-					move_iterator_func(temp, board, *it, pop);
-					if ((*it)->King())
 					{
-						DirectionOf(*it) = DOWN;
+						DirectionOf(*it) = UP;
 						move_iterator_func(temp, board, *it, pop);
+						DirectionOf(*it) = DOWN;
 					}
+					move_iterator_func(temp, board, *it, pop);
 				}
 				delete pop;
 			}
@@ -154,56 +150,132 @@ namespace Draughts
 				{
 					Operation* newjump = new RJump(*pnewboard);
 					if (p->King())
-						DirectionOf(p) = UP;
-					jump_iterator_func(temp, board, p, newjump);
-					if (p->King())
 					{
-						DirectionOf(p) = DOWN;
+						DirectionOf(p) = UP;
 						jump_iterator_func(temp, board, p, newjump);
+						DirectionOf(p) = DOWN;
 					}
+					jump_iterator_func(temp, board, p, newjump);
 					delete newjump;
 				}
 				if (newljumpies.find(p) != newljumpies.end()) 
 				{
 					Operation* newjump = new LJump(*pnewboard);
 					if (p->King())
-						DirectionOf(p) = UP;
-					jump_iterator_func(temp, board, p, newjump);
-					if (p->King())
 					{
-						DirectionOf(p) = DOWN;
+						DirectionOf(p) = UP;
 						jump_iterator_func(temp, board, p, newjump);
+						DirectionOf(p) = DOWN;
 					}
+					jump_iterator_func(temp, board, p, newjump);
 					delete newjump;
 				}
 				delete pnewboard;
 			}
 		}
 		Board* m_pnode;
-		bool m_AIside;
+		bool& m_AIside;
 	};
 	class Game
 	{
 	public:
-		Field<FSIZE> board;
-		Game() :m_side_set(false)
+		Game() :m_pbt(nullptr), m_pAB(nullptr), m_side_set(false)
 		{ }
+		~Game()
+		{
+			if (m_pbt != nullptr) delete m_pbt;
+			if (m_pAB != nullptr) delete m_pAB;
+		}
 		void set_AIside(bool AIside)
 		{
 			m_side_set = true;
 			m_AIside = AIside;
+			m_pbt = new BoardTool(m_AIside);
+			m_pAB = new AlphaBeta<BoardTool>(m_pbt);
 		}
-		bool get_AIside() const
+		void Reset()
+		{
+			delete m_pAB;
+			delete m_pbt;
+			m_pAB = nullptr;
+			m_pbt = nullptr;
+			m_side_set = false;
+			m_board.Reset();
+		}
+		bool IsSideSet() const
+		{
+			return m_side_set;
+		}
+		bool AIside() const
 		{
 			if (!m_side_set)
 				throw std::logic_error("AI side is not set");
 			return m_AIside;
 		}
-		void AITurn()
+		Board get_Board() const
 		{
-			// To be written
+			return m_board;
+		}
+		bool AITurn()
+		{
+			if (!m_side_set)
+				return false;
+			Board* pnewstate = m_pAB->NextState(&m_board);
+			m_board = *pnewstate;
+			delete pnewstate;
+			return true;
+		}
+		enum class Dirn
+		{
+			rightup, rightdown, leftup, leftdown
+		};
+		bool PlayerTurn(char letter, unsigned int num, Dirn direction)
+		{
+			if (!m_side_set)
+				return false;
+			Operation* pop;
+			Piece* p = m_board(letter, num);
+			MFinder mf(m_board);
+			p->Accept(mf);
+			if (direction == Dirn::rightup || direction == Dirn::rightdown)
+			{
+				pset rjumpies = mf.RJumpies();
+				pset rmovies = mf.RMovies();
+				if (rjumpies.find(p) != rjumpies.end())
+					pop = new RJump(m_board);
+				else if (rmovies.find(p) != rmovies.end())
+					pop = new RMove(m_board);
+				else
+					return false;
+
+				if (p->King())
+					DirectionOf(p) = (direction == Dirn::rightup) ? UP : DOWN;
+				p->Accept(*pop);
+				delete pop;
+				return true;
+			}
+			else // leftup or leftdown
+			{
+				pset ljumpies = mf.LJumpies();
+				pset lmovies = mf.LMovies();
+				if (ljumpies.find(p) != ljumpies.end())
+					pop = new LJump(m_board);
+				else if (lmovies.find(p) != lmovies.end())
+					pop = new LMove(m_board);
+				else
+					return false;
+
+				if (p->King())
+					DirectionOf(p) = (direction == Dirn::leftup) ? UP : DOWN;
+				p->Accept(*pop);
+				delete pop;
+				return true;
+			}
 		}
 	private:
+		Board m_board;
+		BoardTool* m_pbt;
+		AlphaBeta<BoardTool>* m_pAB;
 		bool m_AIside;
 		bool m_side_set;
 	};

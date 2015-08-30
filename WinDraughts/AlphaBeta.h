@@ -4,7 +4,8 @@
 Preconditions:
 * class Node_type represents game state
 * Value_type represents heuristic value of a node, set to int per default
-* operators <, >, <= as well as assignment operator and copy constructor must work properly for Value_type
+* operators <, >, <= as well as assignment operator, copy constrctor and default constructor must work 
+  properly for Value_type
 * macros MAX_RESULT and MIN_RESULT must be defined as maximum and minimum values of Value_type, respectively,
   unless the default Value_type is used
 * realization of the abstract class INodeTool must be implemented
@@ -37,10 +38,10 @@ public:
 	virtual std::set<Node*> ChildNodes(bool maximizing_side) const = 0;
 };
 
-template <typename Node_type, typename Value_type = int> class AlphaBeta
+// Tool_type must be derived from INodeTool
+template <typename Tool_type> class AlphaBeta
 {
 public:
-	typedef INodeTool<Node_type, Value_type> Tool_type;
 	typedef typename Tool_type::Node Node;
 	typedef typename Tool_type::Value Value;
 
@@ -51,10 +52,10 @@ public:
 	
 	// Returns a pointer to a dynamic object representing best next state
 	// might return a nullptr if MIN_RESULT is defined incorrectly
-	Node* NextState(const Node& currentState, int depth = 0) const
+	Node* NextState(Node* pcurrentState, int depth = 0) const
 	{
-		m_pfunc->set_Node(currentState);
-		std::set<Node*> childStates = m_pfunc->ChildNodes();
+		m_pfunc->set_Node(pcurrentState);
+		std::set<Node*> childStates = m_pfunc->ChildNodes(true);
 
 		std::pair<Value, Node*> best = { MIN_RESULT, nullptr };
 		for (std::set<Node*>::const_iterator it = childStates.begin(); it != childStates.end(); ++it)
@@ -76,12 +77,13 @@ private:
 			return m_pfunc->NodeValue();
 
 		std::set<Node*> childs = m_pfunc->ChildNodes(maximizing_player);
+		Value v;
 		if (maximizing_player)
 		{
-			Value v = MIN_RESULT;
+			v = MIN_RESULT;
 			for (std::set<Node*>::const_iterator it = childs.begin(); it != childs.end(); ++it)
 			{
-				Value temp = Algorithm(**it, false, depth - 1, alpha, beta);
+				Value temp = Algorithm(*it, false, depth - 1, alpha, beta);
 				if (temp > v) v = temp;
 				if (v > alpha) alpha = v;
 				if (beta <= alpha)
@@ -90,15 +92,14 @@ private:
 						delete *it;
 					return v;
 				}
-				m_pfunc->set_Node(node);
 			}
 		}
 		else
 		{
-			Value v = MAX_RESULT;
+			v = MAX_RESULT;
 			for (std::set<Node*>::const_iterator it = childs.begin(); it != childs.end(); ++it)
 			{
-				Value temp = Algorithm(**it, true, depth - 1, alpha, beta);
+				Value temp = Algorithm(*it, true, depth - 1, alpha, beta);
 				if (temp < v) v = temp;
 				if (v < beta) beta = v;
 				if (beta <= alpha)
@@ -107,7 +108,6 @@ private:
 						delete *it;
 					return v;
 				}
-				m_pfunc->set_Node(node);
 			}
 		}
 
