@@ -35,7 +35,7 @@ public:
 	// @returns true if the node is terminal, false otherwise
 	virtual bool TerminalNode() const = 0;
 	// @returns a set containing all child nodes of the given node
-	virtual std::set<Node*> ChildNodes(bool maximizing_side) const = 0;
+	virtual std::set<Node*> ChildNodes(bool maximizing_side) = 0;
 };
 
 // Tool_type must be derived from INodeTool

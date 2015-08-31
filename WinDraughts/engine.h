@@ -29,11 +29,178 @@ namespace Draughts
 	typedef RightMove<FSIZE> RMove;
 	typedef LeftMove<FSIZE> LMove;
 	typedef std::set<Piece*> pset;
+	//-------------------------------------------------------------------------------------------------
+	class IChildFinder
+	{
+	public:
+		IChildFinder(Board* node, color turn) 
+			:m_turn(turn), m_pboard(node), m_pvec(nullptr), m_mf(*node), m_pop(nullptr)
+		{ }
+		IChildFinder(Board* node, std::set<Board*>& resvec, color turn) 
+			:m_turn(turn), m_pboard(node), m_pvec(&resvec), m_mf(*node), m_pop(nullptr)
+		{ }
+		virtual void set_ResultVec(std::set<Board*>& resvec)
+		{
+			m_pvec = &resvec;
+		}
+		virtual std::set<Board*>* FindChilds() = 0;
+		virtual bool Empty() const = 0;
+		virtual void Clear() = 0;
+	protected:
+		color m_turn;
+		Board* m_pboard;
+		std::set<Board*>* m_pvec;
+		MFinder m_mf;
+		Operation* m_pop;
+		template <class Visitor> void Loop_func(Piece* p)
+		{
+			m_pop = new Visitor(*m_pboard);
+			if (p->King())
+			{
+				DirectionOf(p) = UP;
+				Rec_func(p);
+				delete m_pop;
+				m_pop = new Visitor(*m_pboard);
+				DirectionOf(p) = DOWN;
+			}
+			Rec_func(p);
+			delete m_pop;
+		}
+		virtual void Rec_func(Piece* piece) = 0;
+	};
+	class MoviesFinder :public IChildFinder
+	{
+	public:
+		MoviesFinder(Board* node, color turn) :IChildFinder(node, turn)
+		{
+			Initialize();
+		}
+		MoviesFinder(Board* node, std::set<Board*>& resvec, color turn) :IChildFinder(node, resvec, turn)
+		{
+			Initialize();
+		}
+		bool Empty() const
+		{
+			return m_lmovies.empty() && m_rmovies.empty();
+		}
+		std::set<Board*>* FindChilds()
+		{
+			for (std::set<Piece*>::const_iterator it = m_rmovies.begin(); it != m_rmovies.end(); ++it)
+			{
+				Loop_func<RMove>(*it);
+			}
+			for (std::set<Piece*>::const_iterator it = m_lmovies.begin(); it != m_lmovies.end(); ++it)
+			{
+				Loop_func<LMove>(*it);
+			}
+			m_pop = nullptr;
+			return m_pvec;
+		}
+		void Clear()
+		{
+			m_rmovies.clear();
+			m_lmovies.clear();
+		}
+	private:
+		pset m_rmovies;
+		pset m_lmovies;
+		void Initialize()
+		{
+			Board& board = *m_pboard;
+			for (char letter = 'a'; letter < 'a' + FSIZE; ++letter)
+				for (unsigned int num = 1; num <= FSIZE; ++num)
+				{
+					if (board(letter, num) != nullptr && board(letter, num)->White() == m_turn)
+						board(letter, num)->Accept(m_mf);
+				}
+			m_rmovies = m_mf.RMovies();
+			m_lmovies = m_mf.LMovies();
+		}
+		void Rec_func(Piece* piece)
+		{
+			Board* pnewboard = new Board(*m_pboard);
+			Piece *p = pnewboard->operator()(m_pboard->Lpos_of(piece), m_pboard->Npos_of(piece));
+			p->Accept(*m_pop);
+			m_pvec->insert(pnewboard);
+		}
+	};
+	class JumpiesFinder :public IChildFinder
+	{
+	public:
+		JumpiesFinder(Board* node, color turn) :IChildFinder(node, turn)
+		{
+			Initialize();
+		}
+		JumpiesFinder(Board* node, std::set<Board*>& resvec, color turn) :IChildFinder(node, resvec, turn)
+		{
+			Initialize();
+		}
+		bool Empty() const
+		{
+			return m_ljumpies.empty() && m_rjumpies.empty();
+		}
+		std::set<Board*>* FindChilds()
+		{
+			for (std::set<Piece*>::const_iterator it = m_rjumpies.begin(); it != m_rjumpies.end(); ++it)
+			{
+				Loop_func<RJump>(*it);
+			}
+			for (std::set<Piece*>::const_iterator it = m_ljumpies.begin(); it != m_ljumpies.end(); ++it)
+			{
+				Loop_func<LJump>(*it);
+			}
+			m_pop = nullptr;
+			return m_pvec;
+		}
+		void Clear()
+		{
+			m_rjumpies.clear();
+			m_ljumpies.clear();
+		}
+	private:
+		pset m_rjumpies;
+		pset m_ljumpies;
+		void Initialize()
+		{
+			Board& board = *m_pboard;
+			for (char letter = 'a'; letter < 'a' + FSIZE; ++letter)
+				for (unsigned int num = 1; num <= FSIZE; ++num)
+				{
+					if (board(letter, num) != nullptr && board(letter, num)->White() == m_turn)
+						board(letter, num)->Accept(m_mf);
+				}
+			m_rjumpies = m_mf.RJumpies();
+			m_ljumpies = m_mf.LJumpies();
+		}
+		void Rec_func(Piece* piece)
+		{
+			Board* pnewboard = new Board(*m_pboard);
+			Piece *p = pnewboard->operator()(m_pboard->Lpos_of(piece), m_pboard->Npos_of(piece));
+			p->Accept(*m_pop);
 
+			MFinder* pnewmf = new MFinder(*pnewboard);
+			p->Accept(*pnewmf);
+			delete pnewmf;
+
+			if (pnewmf->RJumpies().empty() && pnewmf->LJumpies().empty())
+			{	// no multiple jumps
+				m_pvec->insert(pnewboard);
+			}
+			else
+			{	// multiple jumps
+				if (!pnewmf->RJumpies().empty())
+					Loop_func<RJump>(p);
+				if (!pnewmf->LJumpies().empty())
+					Loop_func<LJump>(p);
+				delete pnewboard;
+			}
+		}
+	};
+	//-------------------------------------------------------------------------------------------------
 	class BoardTool :public DraughtsTool
 	{
 	public:
-		explicit BoardTool(bool& sidecolor) : m_pnode(nullptr), m_AIside(sidecolor)
+		explicit BoardTool(color& AIside) :m_pcf(nullptr), m_pnode(nullptr), m_AIside(AIside)
 		{ }
 		void set_Node(Board* board)
 		{
@@ -51,134 +218,32 @@ namespace Draughts
 			bool dummy = true;
 			return m_pnode->Win(dummy) || m_pnode->Draw();
 		}
-		std::set<Board*> ChildNodes(bool maximizing_side) const
+		std::set<Board*> ChildNodes(bool maximizing_side)
 		{
-			bool turn = (maximizing_side) ? m_AIside : (!m_AIside);
-			Board& board = *m_pnode;
-
-			MFinder mf(board);
-			for (char letter = 'a'; letter < 'a' + FSIZE; ++letter)
-				for (unsigned int num = 1; num <= FSIZE; ++num)
-				{
-					if (board(letter, num) != nullptr && board(letter, num)->White() == turn)
-						board(letter, num)->Accept(mf);
-				}
-			pset rjumpies = mf.RJumpies();
-			pset ljumpies = mf.LJumpies();
-
+			bool turn = (maximizing_side) ? m_AIside : (!m_AIside);			
 			std::set<Board*> temp;
-			Direction* pdirn = nullptr;
-			if (!rjumpies.empty() || !ljumpies.empty()) // jump
+
+			m_pcf = new JumpiesFinder(m_pnode, temp, turn);
+			if (!m_pcf->Empty()) // jump
 			{
-				Operation* pop = new RJump(board);
-				for (std::set<Piece*>::const_iterator it = rjumpies.begin(); it != rjumpies.end(); ++it)
-				{
-					if ((*it)->King())
-					{
-						DirectionOf(*it) = UP;
-						jump_iterator_func(temp, board, *it, pop);
-						DirectionOf(*it) = DOWN;
-					}
-					jump_iterator_func(temp, board, *it, pop);
-				}
-				delete pop;
-				pop = new LJump(board);
-				for (std::set<Piece*>::const_iterator it = ljumpies.begin(); it != ljumpies.end(); ++it)
-				{
-					if ((*it)->King())
-					{
-						DirectionOf(*it) = UP;
-						jump_iterator_func(temp, board, *it, pop);
-						DirectionOf(*it) = DOWN;
-					}
-					jump_iterator_func(temp, board, *it, pop);
-				}
-				delete pop;
+				m_pcf->FindChilds();
 			}
 			else // move
 			{
-				pset rmovies = mf.RMovies();
-				pset lmovies = mf.LMovies();
-				Operation* pop = new RMove(board);
-				for (std::set<Piece*>::const_iterator it = rmovies.begin(); it != rmovies.end(); ++it)
-				{
-					if ((*it)->King())
-					{
-						DirectionOf(*it) = UP;
-						move_iterator_func(temp, board, *it, pop);
-						DirectionOf(*it) = DOWN;
-					}
-					move_iterator_func(temp, board, *it, pop);
-				}
-				delete pop;
-				pop = new LMove(board);
-				for (std::set<Piece*>::const_iterator it = lmovies.begin(); it != lmovies.end(); ++it)
-				{
-					if ((*it)->King())
-					{
-						DirectionOf(*it) = UP;
-						move_iterator_func(temp, board, *it, pop);
-						DirectionOf(*it) = DOWN;
-					}
-					move_iterator_func(temp, board, *it, pop);
-				}
-				delete pop;
+				delete m_pcf;
+				m_pcf = new MoviesFinder(m_pnode, temp, turn);
+				m_pcf->FindChilds();
 			}
+			delete m_pcf;
+			m_pcf = nullptr;
 			return temp;
 		}
 	private:
-		void move_iterator_func(std::set<Board*>& temp, const Board& board, Piece* piece, Operation* move) const
-		{
-			Board* pnewboard = new Board(board);
-			Piece *p = pnewboard->operator()(board.Lpos_of(piece), board.Npos_of(piece));
-			p->Accept(*move);
-			temp.insert(pnewboard);
-		}
-		void jump_iterator_func(std::set<Board*>& temp, const Board& board, Piece* piece, Operation* jump) const
-		{
-			Board* pnewboard = new Board(board);
-			Piece *p = pnewboard->operator()(board.Lpos_of(piece), board.Npos_of(piece));
-			p->Accept(*jump);
-
-			MFinder newmf(*pnewboard);
-			pset newrjumpies = newmf.RJumpies();
-			pset newljumpies = newmf.LJumpies();
-			if (newrjumpies.find(p) == newrjumpies.end() && newljumpies.find(p) == newljumpies.end())
-			{	// no multiple jumps
-				temp.insert(pnewboard);
-			}
-			else
-			{	// multiple jumps
-				if (newrjumpies.find(p) != newrjumpies.end())
-				{
-					Operation* newjump = new RJump(*pnewboard);
-					if (p->King())
-					{
-						DirectionOf(p) = UP;
-						jump_iterator_func(temp, board, p, newjump);
-						DirectionOf(p) = DOWN;
-					}
-					jump_iterator_func(temp, board, p, newjump);
-					delete newjump;
-				}
-				if (newljumpies.find(p) != newljumpies.end()) 
-				{
-					Operation* newjump = new LJump(*pnewboard);
-					if (p->King())
-					{
-						DirectionOf(p) = UP;
-						jump_iterator_func(temp, board, p, newjump);
-						DirectionOf(p) = DOWN;
-					}
-					jump_iterator_func(temp, board, p, newjump);
-					delete newjump;
-				}
-				delete pnewboard;
-			}
-		}
+		IChildFinder* m_pcf;
 		Board* m_pnode;
-		bool& m_AIside;
+		color& m_AIside;
 	};
+	//-------------------------------------------------------------------------------------------------
 	class Game
 	{
 	public:
@@ -282,6 +347,7 @@ namespace Draughts
 		bool m_AIside;
 		bool m_side_set;
 	};
+	//-------------------------------------------------------------------------------------------------
 #ifdef _CONSOLE
 	class CmdPlay
 	{
@@ -413,4 +479,5 @@ namespace Draughts
 		CRect m_numbers[size];
 	};
 #endif
+	//-------------------------------------------------------------------------------------------------
 }

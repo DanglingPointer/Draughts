@@ -19,6 +19,7 @@
 
 namespace Draughts
 {
+	typedef bool color;
 	class Piece;
 
 	__interface Operation // Visitor interface
@@ -31,7 +32,7 @@ namespace Draughts
 	class Piece
 	{
 	protected:
-		Piece(bool white, bool king) :m_white(white), m_king(king)
+		Piece(color white, bool king) :m_white(white), m_king(king)
 		{ }
 	public:
 		virtual ~Piece()
@@ -60,7 +61,7 @@ namespace Draughts
 	}
 #endif
 	typedef int Direction;
-	template <bool color> class King :public Piece
+	template <color color> class King :public Piece
 	{
 	public:
 		King<color>() :Piece(color, KING)
@@ -71,7 +72,7 @@ namespace Draughts
 			op.King(this);
 		}
 	};
-	template <bool color> class Man :public Piece
+	template <color color> class Man :public Piece
 	{
 	public:
 		Man<color>():Piece(color, MAN)
@@ -143,7 +144,7 @@ namespace Draughts
 						return num;
 			return 0;
 		}
-		bool Win(bool& color) const
+		bool Win(color& color) const
 		{
 			std::set<bool> temp;
 			for (int i = 0; i < size*size; ++i)
