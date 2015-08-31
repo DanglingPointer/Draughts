@@ -61,21 +61,21 @@ namespace Draughts
 		std::set<Board*>* m_pvec;
 		MFinder m_mf;
 		Operation* m_pop;
-		template <class Visitor> void Loop_func(Piece* p)
+		virtual void Rec_func(Piece* piece, Board* pb) = 0;
+		template <class Visitor> void Loop_func(Piece* p, Board* pb)
 		{
-			m_pop = new Visitor(*m_pboard);
+			m_pop = new Visitor(*pb);
 			if (p->King())
 			{
 				DirectionOf(p) = UP;
-				Rec_func(p);
+				Rec_func(p, pb);
 				delete m_pop;
-				m_pop = new Visitor(*m_pboard);
+				m_pop = new Visitor(*pb);
 				DirectionOf(p) = DOWN;
 			}
-			Rec_func(p);
+			Rec_func(p, pb);
 			delete m_pop;
 		}
-		virtual void Rec_func(Piece* piece) = 0;
 	};
 	class MoviesFinder :public IStateFinder
 	{
@@ -93,11 +93,11 @@ namespace Draughts
 		{
 			for (std::set<Piece*>::const_iterator it = m_rmovies.begin(); it != m_rmovies.end(); ++it)
 			{
-				Loop_func<RMove>(*it);
+				Loop_func<RMove>(*it, m_pboard);
 			}
 			for (std::set<Piece*>::const_iterator it = m_lmovies.begin(); it != m_lmovies.end(); ++it)
 			{
-				Loop_func<LMove>(*it);
+				Loop_func<LMove>(*it, m_pboard);
 			}
 			m_pop = nullptr;
 			return m_pvec;
@@ -110,9 +110,9 @@ namespace Draughts
 	private:
 		pset m_rmovies;
 		pset m_lmovies;
-		void Rec_func(Piece* piece)
+		void Rec_func(Piece* piece, Board* pb)
 		{
-			Board* pnewboard = new Board(*m_pboard);
+			Board* pnewboard = new Board(*pb);
 			Piece *p = pnewboard->operator()(m_pboard->Lpos_of(piece), m_pboard->Npos_of(piece));
 			p->Accept(*m_pop);
 			m_pvec->insert(pnewboard);
@@ -134,11 +134,11 @@ namespace Draughts
 		{
 			for (std::set<Piece*>::const_iterator it = m_rjumpies.begin(); it != m_rjumpies.end(); ++it)
 			{
-				Loop_func<RJump>(*it);
+				Loop_func<RJump>(*it, m_pboard);
 			}
 			for (std::set<Piece*>::const_iterator it = m_ljumpies.begin(); it != m_ljumpies.end(); ++it)
 			{
-				Loop_func<LJump>(*it);
+				Loop_func<LJump>(*it, m_pboard);
 			}
 			m_pop = nullptr;
 			return m_pvec;
@@ -151,9 +151,9 @@ namespace Draughts
 	private:
 		pset m_rjumpies;
 		pset m_ljumpies;
-		void Rec_func(Piece* piece)
+		void Rec_func(Piece* piece, Board* pb)
 		{
-			Board* pnewboard = new Board(*m_pboard);
+			Board* pnewboard = new Board(*pb);
 			Piece *p = pnewboard->operator()(m_pboard->Lpos_of(piece), m_pboard->Npos_of(piece));
 			p->Accept(*m_pop); // initial jump
 
@@ -166,9 +166,9 @@ namespace Draughts
 			else
 			{	// multiple jumps
 				if (!newmf.RJumpies().empty())
-					Loop_func<RJump>(p);
+					Loop_func<RJump>(p, pnewboard);
 				if (!newmf.LJumpies().empty())
-					Loop_func<LJump>(p);
+					Loop_func<LJump>(p, pnewboard);
 				delete pnewboard;
 			}
 		}
