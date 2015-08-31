@@ -30,20 +30,29 @@ namespace Draughts
 	typedef LeftMove<FSIZE> LMove;
 	typedef std::set<Piece*> pset;
 	//-------------------------------------------------------------------------------------------------
-	class IChildFinder
+	class IStateFinder
 	{
 	public:
-		IChildFinder(Board* node, color turn) 
-			:m_turn(turn), m_pboard(node), m_pvec(nullptr), m_mf(*node), m_pop(nullptr)
-		{ }
-		IChildFinder(Board* node, std::set<Board*>& resvec, color turn) 
-			:m_turn(turn), m_pboard(node), m_pvec(&resvec), m_mf(*node), m_pop(nullptr)
-		{ }
-		virtual void set_ResultVec(std::set<Board*>& resvec)
+		IStateFinder(Board* pnode, std::set<Board*>& resvec, color turn) 
+			:m_turn(turn), m_pboard(pnode), m_pvec(&resvec), m_mf(*pnode), m_pop(nullptr)
+		{
+			Board& board = *m_pboard;
+			for (char letter = 'a'; letter < 'a' + FSIZE; ++letter)
+				for (unsigned int num = 1; num <= FSIZE; ++num)
+				{
+					if (board(letter, num) != nullptr && board(letter, num)->White() == m_turn)
+						board(letter, num)->Accept(m_mf);
+				}
+		}
+		void set_ResultVec(std::set<Board*>& resvec)
 		{
 			m_pvec = &resvec;
 		}
-		virtual std::set<Board*>* FindChilds() = 0;
+		void set_Board(Board* pb)
+		{
+			m_pboard = pb;
+		}
+		virtual std::set<Board*>* FindStates() = 0;
 		virtual bool Empty() const = 0;
 		virtual void Clear() = 0;
 	protected:
@@ -68,22 +77,19 @@ namespace Draughts
 		}
 		virtual void Rec_func(Piece* piece) = 0;
 	};
-	class MoviesFinder :public IChildFinder
+	class MoviesFinder :public IStateFinder
 	{
 	public:
-		MoviesFinder(Board* node, color turn) :IChildFinder(node, turn)
+		MoviesFinder(Board* pnode, std::set<Board*>& resvec, color turn) :IStateFinder(pnode, resvec, turn)
 		{
-			Initialize();
-		}
-		MoviesFinder(Board* node, std::set<Board*>& resvec, color turn) :IChildFinder(node, resvec, turn)
-		{
-			Initialize();
+			m_rmovies = m_mf.RMovies();
+			m_lmovies = m_mf.LMovies();
 		}
 		bool Empty() const
 		{
 			return m_lmovies.empty() && m_rmovies.empty();
 		}
-		std::set<Board*>* FindChilds()
+		std::set<Board*>* FindStates()
 		{
 			for (std::set<Piece*>::const_iterator it = m_rmovies.begin(); it != m_rmovies.end(); ++it)
 			{
@@ -104,18 +110,6 @@ namespace Draughts
 	private:
 		pset m_rmovies;
 		pset m_lmovies;
-		void Initialize()
-		{
-			Board& board = *m_pboard;
-			for (char letter = 'a'; letter < 'a' + FSIZE; ++letter)
-				for (unsigned int num = 1; num <= FSIZE; ++num)
-				{
-					if (board(letter, num) != nullptr && board(letter, num)->White() == m_turn)
-						board(letter, num)->Accept(m_mf);
-				}
-			m_rmovies = m_mf.RMovies();
-			m_lmovies = m_mf.LMovies();
-		}
 		void Rec_func(Piece* piece)
 		{
 			Board* pnewboard = new Board(*m_pboard);
@@ -124,22 +118,19 @@ namespace Draughts
 			m_pvec->insert(pnewboard);
 		}
 	};
-	class JumpiesFinder :public IChildFinder
+	class JumpiesFinder :public IStateFinder
 	{
 	public:
-		JumpiesFinder(Board* node, color turn) :IChildFinder(node, turn)
+		JumpiesFinder(Board* pnode, std::set<Board*>& resvec, color turn) :IStateFinder(pnode, resvec, turn)
 		{
-			Initialize();
-		}
-		JumpiesFinder(Board* node, std::set<Board*>& resvec, color turn) :IChildFinder(node, resvec, turn)
-		{
-			Initialize();
+			m_rjumpies = m_mf.RJumpies();
+			m_ljumpies = m_mf.LJumpies();
 		}
 		bool Empty() const
 		{
 			return m_ljumpies.empty() && m_rjumpies.empty();
 		}
-		std::set<Board*>* FindChilds()
+		std::set<Board*>* FindStates()
 		{
 			for (std::set<Piece*>::const_iterator it = m_rjumpies.begin(); it != m_rjumpies.end(); ++it)
 			{
@@ -160,37 +151,23 @@ namespace Draughts
 	private:
 		pset m_rjumpies;
 		pset m_ljumpies;
-		void Initialize()
-		{
-			Board& board = *m_pboard;
-			for (char letter = 'a'; letter < 'a' + FSIZE; ++letter)
-				for (unsigned int num = 1; num <= FSIZE; ++num)
-				{
-					if (board(letter, num) != nullptr && board(letter, num)->White() == m_turn)
-						board(letter, num)->Accept(m_mf);
-				}
-			m_rjumpies = m_mf.RJumpies();
-			m_ljumpies = m_mf.LJumpies();
-		}
 		void Rec_func(Piece* piece)
 		{
 			Board* pnewboard = new Board(*m_pboard);
 			Piece *p = pnewboard->operator()(m_pboard->Lpos_of(piece), m_pboard->Npos_of(piece));
-			p->Accept(*m_pop);
+			p->Accept(*m_pop); // initial jump
 
-			MFinder* pnewmf = new MFinder(*pnewboard);
-			p->Accept(*pnewmf);
-			delete pnewmf;
-
-			if (pnewmf->RJumpies().empty() && pnewmf->LJumpies().empty())
+			MFinder newmf(*pnewboard);
+			p->Accept(newmf);
+			if (newmf.RJumpies().empty() && newmf.LJumpies().empty())
 			{	// no multiple jumps
 				m_pvec->insert(pnewboard);
 			}
 			else
 			{	// multiple jumps
-				if (!pnewmf->RJumpies().empty())
+				if (!newmf.RJumpies().empty())
 					Loop_func<RJump>(p);
-				if (!pnewmf->LJumpies().empty())
+				if (!newmf.LJumpies().empty())
 					Loop_func<LJump>(p);
 				delete pnewboard;
 			}
@@ -226,20 +203,20 @@ namespace Draughts
 			m_pcf = new JumpiesFinder(m_pnode, temp, turn);
 			if (!m_pcf->Empty()) // jump
 			{
-				m_pcf->FindChilds();
+				m_pcf->FindStates();
 			}
 			else // move
 			{
 				delete m_pcf;
 				m_pcf = new MoviesFinder(m_pnode, temp, turn);
-				m_pcf->FindChilds();
+				m_pcf->FindStates();
 			}
 			delete m_pcf;
 			m_pcf = nullptr;
 			return temp;
 		}
 	private:
-		IChildFinder* m_pcf;
+		IStateFinder* m_pcf;
 		Board* m_pnode;
 		color& m_AIside;
 	};
