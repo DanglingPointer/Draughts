@@ -7,7 +7,7 @@
 #endif
 
 #ifndef FSIZE
-#define FSIZE 12
+#define FSIZE 8
 #endif
 
 #define WIN 1
@@ -383,10 +383,10 @@ namespace Draughts
 			int client_y = (pclient_rect->Size()).cy;
 			unsigned int min_size = (client_x < client_y) ? client_x : client_y;
 			int vmargin = pDC->GetTextExtent("White").cy;
-			m_br_size = min_size - (7 * vmargin);
+			m_br_size = min_size - (8 * vmargin);
 			int hmargin = (client_x - m_br_size) / 2;
 			m_br.right = m_br.bottom = m_br_size;
-			m_br.OffsetRect(hmargin, 5 * vmargin);
+			m_br.OffsetRect(hmargin, 6 * vmargin);
 			m_square_size = m_br_size / size;
 			// Letters, numbers
 			CSize letter_size = pDC->GetTextExtent("H");
