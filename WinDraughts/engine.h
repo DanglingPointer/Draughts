@@ -7,7 +7,7 @@
 #endif
 
 #ifndef FSIZE
-#define FSIZE 8
+#define FSIZE 10
 #endif
 
 #define WIN 1
@@ -381,7 +381,6 @@ namespace Draughts
 			// Border rectangle
 			int client_x = (pclient_rect->Size()).cx;
 			int client_y = (pclient_rect->Size()).cy;
-
 			unsigned int min_size = (client_x < client_y) ? client_x : client_y;
 			int vmargin = pDC->GetTextExtent("White").cy;
 			m_br_size = min_size - (7 * vmargin);
@@ -399,12 +398,12 @@ namespace Draughts
 			{
 				m_vrects[i].left = m_br.left + m_square_size * i;
 				m_hrects[i].top = m_br.top + m_square_size * i;
-				m_vrects[i].right = m_vrects[i].left + m_square_size;
-				m_hrects[i].bottom = m_hrects[i].top + m_square_size;
+				m_vrects[i].right = m_vrects[i].left + m_square_size + 1;
+				m_hrects[i].bottom = m_hrects[i].top + m_square_size + 1;
 				m_vrects[i].top = m_br.top;
-				m_vrects[i].bottom = m_br.bottom;
+				m_vrects[i].bottom = m_br.top + m_square_size * size + 1;
 				m_hrects[i].left = m_br.left;
-				m_hrects[i].right = m_br.right;
+				m_hrects[i].right = m_br.left + m_square_size * size + 1;
 
 				num_corner[i] = m_hrects[i].TopLeft();
 				num_corner[i].x -= letter_size.cx;
@@ -416,15 +415,17 @@ namespace Draughts
 				m_letters[i] = CRect(letter_corner[i], num_size);
 			}
 		}
-		CRect RectAt(char letter, unsigned int num) const
+		CRect SquareAt(char letter, unsigned int num) const
 		{
 			int vrect_num = letter - 'a';
 			int hrect_num = size - num;
-			return CRect().IntersectRect(m_vrects + vrect_num, m_hrects + hrect_num);
+			CRect temp;
+			temp.IntersectRect(m_vrects + vrect_num, m_hrects + hrect_num);
+			return temp;
 		}
 		CPoint CtrAt(char letter, unsigned int num) const
 		{
-			return RectAt(letter, num).CenterPoint();
+			return SquareAt(letter, num).CenterPoint();
 		}
 		int SquareSize() const
 		{
@@ -440,10 +441,23 @@ namespace Draughts
 				pDC->Rectangle(m_hrects + i);
 				std::string letter, number; 
 				letter.push_back('a' + i);
-				number.push_back(size - i + '0');
+				char numchar = (char)(size - i + '0');
+				if (numchar > 9)
+				{
+					number.push_back('1');
+					number.push_back(numchar - 10 + '0');
+				}
+				else
+					number.push_back(numchar);
 				pDC->DrawTextW(letter.c_str(), m_letters + i, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
 				pDC->DrawTextW(number.c_str(), m_numbers + i, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
 			}
+			for (unsigned int row = 1; row <= size; ++row)
+				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
+				{
+					pDC->SelectStockObject(GRAY_BRUSH);
+					pDC->Rectangle(SquareAt(letter, row));
+				}
 
 		}
 	private:
