@@ -7,7 +7,7 @@
 #endif
 
 #ifndef FSIZE
-#define FSIZE 10
+#define FSIZE 12
 #endif
 
 #define WIN 1
@@ -390,7 +390,7 @@ namespace Draughts
 			m_square_size = m_br_size / size;
 			// Letters, numbers
 			CSize letter_size = pDC->GetTextExtent("H");
-			CSize num_size = pDC->GetTextExtent("6");
+			CSize num_size = pDC->GetTextExtent("66");
 			CPoint letter_corner[size];
 			CPoint num_corner[size];
 			// Horisontal and vertical rectangles
@@ -406,13 +406,13 @@ namespace Draughts
 				m_hrects[i].right = m_br.left + m_square_size * size + 1;
 
 				num_corner[i] = m_hrects[i].TopLeft();
-				num_corner[i].x -= letter_size.cx;
+				num_corner[i].x -= 2 * letter_size.cx;
 				num_corner[i].y += m_square_size / 2 - num_size.cy / 2;
-				m_numbers[i] = CRect(num_corner[i], letter_size);
+				m_numbers[i] = CRect(num_corner[i], num_size);
 
 				letter_corner[i] = m_vrects[i].BottomRight();
 				letter_corner[i].x -= (m_square_size/2 + letter_size.cx / 2);
-				m_letters[i] = CRect(letter_corner[i], num_size);
+				m_letters[i] = CRect(letter_corner[i], letter_size);
 			}
 		}
 		CRect SquareAt(char letter, unsigned int num) const
@@ -442,10 +442,10 @@ namespace Draughts
 				std::string letter, number; 
 				letter.push_back('a' + i);
 				char numchar = (char)(size - i + '0');
-				if (numchar > 9)
+				if (numchar > '9')
 				{
 					number.push_back('1');
-					number.push_back(numchar - 10 + '0');
+					number.push_back(numchar - 10);
 				}
 				else
 					number.push_back(numchar);
@@ -458,7 +458,6 @@ namespace Draughts
 					pDC->SelectStockObject(GRAY_BRUSH);
 					pDC->Rectangle(SquareAt(letter, row));
 				}
-
 		}
 	private:
 		CRect m_br;			// border rectangle
