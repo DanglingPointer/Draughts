@@ -1,9 +1,13 @@
 #pragma once
 #include<stdexcept>
 #include<string>
+#include<utility>
 #include"basic_classes.h"
-#ifndef _CONSOLE
-#include<afxwin.h>
+
+#ifdef _CONSOLE
+ #include<iostream>
+#else
+ #include<afxwin.h>
 #endif
 
 #ifndef FSIZE
@@ -13,6 +17,8 @@
 #define WIN 1
 #define DRAW 0
 #define LOSS -1
+#define letter_pos first
+#define digit_pos second
 
 #define MAX_RESULT WIN
 #define MIN_RESULT LOSS
@@ -29,6 +35,7 @@ namespace Draughts
 	typedef RightMove<FSIZE> RMove;
 	typedef LeftMove<FSIZE> LMove;
 	typedef std::set<Piece*> pset;
+	typedef std::pair<char, unsigned int> pos;
 	//-------------------------------------------------------------------------------------------------
 	class IStateFinder
 	{
@@ -426,6 +433,19 @@ namespace Draughts
 		CPoint CtrAt(char letter, unsigned int num) const
 		{
 			return SquareAt(letter, num).CenterPoint();
+		}
+		pos SquareOfPt(const CPoint& pt) const
+		{
+			pos temp(0, 0);
+			for (unsigned int num = 1; num <= size; ++num)
+				for (char letter = 'a'; letter < 'a' + size; ++letter)
+					if (SquareAt(letter, num).PtInRect(pt))
+					{
+						temp.letter_pos = letter;
+						temp.digit_pos = num;
+						return temp;
+					}
+			return temp;
 		}
 		int SquareSize() const
 		{
