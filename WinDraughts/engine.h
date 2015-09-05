@@ -3,11 +3,12 @@
 #include<string>
 #include<utility>
 #include"basic_classes.h"
+#include<list>
 
 #ifdef _CONSOLE
  #include<iostream>
 #else
- #include<afxwin.h>
+ #include"chessboard.h"
 #endif
 
 #ifndef FSIZE
@@ -17,9 +18,6 @@
 #define WIN 1
 #define DRAW 0
 #define LOSS -1
-#define letter_pos first
-#define digit_pos second
-
 #define MAX_RESULT WIN
 #define MIN_RESULT LOSS
 #include"AlphaBeta.h"
@@ -35,7 +33,6 @@ namespace Draughts
 	typedef RightMove<FSIZE> RMove;
 	typedef LeftMove<FSIZE> LMove;
 	typedef std::set<Piece*> pset;
-	typedef std::pair<char, unsigned int> pos;
 	//-------------------------------------------------------------------------------------------------
 	class IStateFinder
 	{
@@ -247,10 +244,16 @@ namespace Draughts
 		}
 		void Reset()
 		{
-			delete m_pAB;
-			delete m_pbt;
-			m_pAB = nullptr;
-			m_pbt = nullptr;
+			if (m_pAB != nullptr)
+			{
+				delete m_pAB;
+				m_pAB = nullptr;
+			}
+			if (m_pbt != nullptr)
+			{
+				delete m_pbt;
+				m_pbt = nullptr;
+			}
 			m_side_set = false;
 			m_board.Reset();
 		}
@@ -258,13 +261,13 @@ namespace Draughts
 		{
 			return m_side_set;
 		}
-		bool AIside() const
+		color AIside() const
 		{
 			if (!m_side_set)
 				throw std::logic_error("AI side is not set");
 			return m_AIside;
 		}
-		Board get_Board() const
+		const Board& get_Board() const
 		{
 			return m_board;
 		}
@@ -380,113 +383,146 @@ namespace Draughts
 		MoveFinder<FSIZE> m_mf;
 	};
 #else
-	template <unsigned int size> class WinBoard
+#pragma warning( push )
+#pragma warning( disable : 4800 )
+#pragma warning( disable : 4244 )
+	class WinBoard :public ChessBoard<FSIZE>
 	{
 	public:
-		WinBoard(CRect* pclient_rect, CClientDC* pDC) :m_br(0, 0, 0, 0)
+		WinBoard(CRect* pclient_rect, CDC* pDC) :ChessBoard<FSIZE>(pclient_rect, pDC)
 		{
-			// Border rectangle
-			int client_x = (pclient_rect->Size()).cx;
-			int client_y = (pclient_rect->Size()).cy;
-			unsigned int min_size = (client_x < client_y) ? client_x : client_y;
-			int vmargin = pDC->GetTextExtent("White").cy;
-			m_br_size = min_size - (8 * vmargin);
-			int hmargin = (client_x - m_br_size) / 2;
-			m_br.right = m_br.bottom = m_br_size;
-			m_br.OffsetRect(hmargin, 6 * vmargin);
-			m_square_size = m_br_size / size;
-			// Letters, numbers
-			CSize letter_size = pDC->GetTextExtent("H");
-			CSize num_size = pDC->GetTextExtent("66");
-			CPoint letter_corner[size];
-			CPoint num_corner[size];
-			// Horisontal and vertical rectangles
-			for (unsigned int i = 0; i < size; ++i)
-			{
-				m_vrects[i].left = m_br.left + m_square_size * i;
-				m_hrects[i].top = m_br.top + m_square_size * i;
-				m_vrects[i].right = m_vrects[i].left + m_square_size + 1;
-				m_hrects[i].bottom = m_hrects[i].top + m_square_size + 1;
-				m_vrects[i].top = m_br.top;
-				m_vrects[i].bottom = m_br.top + m_square_size * size + 1;
-				m_hrects[i].left = m_br.left;
-				m_hrects[i].right = m_br.left + m_square_size * size + 1;
+			CSize color_button_size = pDC->GetTextExtent("White");
+			color_button_size.cx += 10;
+			color_button_size.cy += 10;
+			CSize reset_size = pDC->GetTextExtent("New game");
+			reset_size.cx += 10;
+			reset_size.cy += 10;
+			CRect edge = ButtonsField();
 
-				num_corner[i] = m_hrects[i].TopLeft();
-				num_corner[i].x -= 2 * letter_size.cx;
-				num_corner[i].y += m_square_size / 2 - num_size.cy / 2;
-				m_numbers[i] = CRect(num_corner[i], num_size);
-
-				letter_corner[i] = m_vrects[i].BottomRight();
-				letter_corner[i].x -= (m_square_size/2 + letter_size.cx / 2);
-				m_letters[i] = CRect(letter_corner[i], letter_size);
-			}
+			m_white_button = CRect(edge.TopLeft(), color_button_size);
+			m_black_button = CRect(edge.TopLeft(), color_button_size);
+			m_black_button.OffsetRect(m_white_button.Size().cx * 1.5, 0);
+			m_reset_button.right = edge.right;
+			m_reset_button.top = edge.top;
+			m_reset_button.bottom = m_reset_button.top + reset_size.cy;
+			m_reset_button.left = m_reset_button.right - reset_size.cx;
 		}
-		CRect SquareAt(char letter, unsigned int num) const
+		bool InsideWhiteButton(const CPoint& pt) const
 		{
-			int vrect_num = letter - 'a';
-			int hrect_num = size - num;
-			CRect temp;
-			temp.IntersectRect(m_vrects + vrect_num, m_hrects + hrect_num);
-			return temp;
+			return (bool)(m_white_button.PtInRect(pt));
 		}
-		CPoint CtrAt(char letter, unsigned int num) const
+		bool InsideBlackButton(const CPoint& pt) const
 		{
-			return SquareAt(letter, num).CenterPoint();
+			return (bool)(m_black_button.PtInRect(pt));
 		}
-		pos SquareOfPt(const CPoint& pt) const
+		bool InsideResetButton(const CPoint& pt) const
 		{
-			pos temp(0, 0);
-			for (unsigned int num = 1; num <= size; ++num)
-				for (char letter = 'a'; letter < 'a' + size; ++letter)
-					if (SquareAt(letter, num).PtInRect(pt))
-					{
-						temp.letter_pos = letter;
-						temp.digit_pos = num;
-						return temp;
-					}
-			return temp;
+			return (bool)(m_reset_button.PtInRect(pt));
 		}
-		int SquareSize() const
+		void Display(CDC* pDC, Game* pgame)
 		{
-			return m_square_size;
-		}
-		void Display(CPaintDC* pDC)
-		{
-			for (unsigned int i = 0; i < size; ++i)
+			ChessBoard<FSIZE>::Display(pDC);
+			pDC->SelectStockObject(HOLLOW_BRUSH);
+			pDC->Rectangle(m_reset_button);
+			if (!pgame->IsSideSet())
 			{
 				pDC->SelectStockObject(HOLLOW_BRUSH);
-				pDC->Rectangle(m_vrects + i);
+				pDC->Rectangle(m_white_button);
 				pDC->SelectStockObject(HOLLOW_BRUSH);
-				pDC->Rectangle(m_hrects + i);
-				std::string letter, number; 
-				letter.push_back('a' + i);
-				char numchar = (char)(size - i + '0');
-				if (numchar > '9')
-				{
-					number.push_back('1');
-					number.push_back(numchar - 10);
-				}
-				else
-					number.push_back(numchar);
-				pDC->DrawTextW(letter.c_str(), m_letters + i, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-				pDC->DrawTextW(number.c_str(), m_numbers + i, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+				pDC->Rectangle(m_black_button);
 			}
-			for (unsigned int row = 1; row <= size; ++row)
-				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
-				{
-					pDC->SelectStockObject(GRAY_BRUSH);
-					pDC->Rectangle(SquareAt(letter, row));
-				}
+			else
+			{
+				(pgame->AIside() == WHITE) ? pDC->SelectStockObject(HOLLOW_BRUSH) : pDC->SelectStockObject(BLACK_BRUSH);
+				pDC->Rectangle(m_white_button);
+				(pgame->AIside() == WHITE) ? pDC->SelectStockObject(BLACK_BRUSH) : pDC->SelectStockObject(HOLLOW_BRUSH);
+				pDC->Rectangle(m_black_button);
+			}
+			pDC->DrawText("White", m_white_button, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+			pDC->DrawText("Black", m_black_button, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
+			pDC->DrawText("New game", m_reset_button, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
 		}
 	private:
-		CRect m_br;			// border rectangle
-		int m_br_size;		// border rectangle side length
-		int m_square_size;
-		CRect m_vrects[size];
-		CRect m_hrects[size];
-		CRect m_letters[size];
-		CRect m_numbers[size];
+		CRect m_white_button;
+		CRect m_black_button;
+		CRect m_reset_button;
+	};
+#pragma warning( pop )
+	class WinPieces
+	{
+	public:
+		WinPieces(Game* game, WinBoard*& pwb) :m_pgame(game), m_ppwb(&pwb)
+		{ }
+		void Update()
+		{
+			m_whitemen.clear();
+			m_blackmen.clear();
+			m_whitekings.clear();
+			m_blackkings.clear();
+			for (unsigned int row = 1; row <= FSIZE; ++row)
+				for (char letter = 'a'; letter < 'a' + FSIZE; ++letter)
+				{
+					Piece* pp = (m_pgame->get_Board())(letter, row);
+					if (pp != nullptr)
+					{
+						CRect temp = (*m_ppwb)->SquareAt(letter, row);
+						int margin = (*m_ppwb)->SquareSize() / 8;
+						temp.right -= (2 * margin);
+						temp.bottom -= (2 * margin);
+						temp.OffsetRect(margin, margin);
+						if (!pp->King())
+							pp->White() ? m_whitemen.push_back(temp) : m_blackmen.push_back(temp);
+						else
+							pp->White() ? m_whitekings.push_back(temp) : m_blackkings.push_back(temp);
+					}
+				}
+		}
+		void Display(CDC* pDC)
+		{
+			for (std::list<CRect>::const_iterator it = m_whitemen.begin(); it != m_whitemen.end(); ++it)
+			{
+				pDC->SelectStockObject(WHITE_BRUSH);
+				pDC->Ellipse(*it);
+			}
+			for (std::list<CRect>::const_iterator it = m_blackmen.begin(); it != m_blackmen.end(); ++it)
+			{
+				pDC->SelectStockObject(BLACK_BRUSH);
+				pDC->Ellipse(*it);
+			}
+			for (std::list<CRect>::const_iterator it = m_whitekings.begin(); it != m_whitekings.end(); ++it)
+			{
+				pDC->SelectStockObject(LTGRAY_BRUSH);
+				pDC->Ellipse(*it);
+			}
+			for (std::list<CRect>::const_iterator it = m_blackkings.begin(); it != m_blackkings.end(); ++it)
+			{
+				pDC->SelectStockObject(DKGRAY_BRUSH);
+				pDC->Ellipse(*it);
+			}
+		}
+		CRect* get_Piece(const CPoint& pt)
+		{
+			for (std::list<CRect>::iterator it = m_whitemen.begin(); it != m_whitemen.end(); ++it)
+				if (it->PtInRect(pt))
+					return &(*it);
+			for (std::list<CRect>::iterator it = m_blackmen.begin(); it != m_blackmen.end(); ++it)
+				if (it->PtInRect(pt))
+					return &(*it);
+			for (std::list<CRect>::iterator it = m_whitekings.begin(); it != m_whitekings.end(); ++it)
+				if (it->PtInRect(pt))
+					return &(*it);
+			for (std::list<CRect>::iterator it = m_blackkings.begin(); it != m_blackkings.end(); ++it)
+				if (it->PtInRect(pt))
+					return &(*it);
+			return nullptr;
+		}
+	private:
+		Game* m_pgame;
+		WinBoard** m_ppwb;
+		std::list<CRect> m_whitemen;
+		std::list<CRect> m_blackmen;
+		std::list<CRect> m_whitekings;
+		std::list<CRect> m_blackkings;
 	};
 #endif
 	//-------------------------------------------------------------------------------------------------

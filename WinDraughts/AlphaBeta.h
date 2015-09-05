@@ -1,6 +1,5 @@
 #pragma once
-
-/**
+/** GENERIC ALPHA-BETA PRUNING ALGORITHM **
 Preconditions:
 * class Node_type represents game state
 * Value_type represents heuristic value of a node, set to int per default

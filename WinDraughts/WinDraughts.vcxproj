@@ -149,6 +149,7 @@
   <ItemGroup>
     <ClInclude Include="AlphaBeta.h" />
     <ClInclude Include="basic_classes.h" />
+    <ClInclude Include="chessboard.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="MainFrame.h" />
   </ItemGroup>
