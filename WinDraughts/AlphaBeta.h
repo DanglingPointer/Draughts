@@ -21,11 +21,11 @@ Preconditions:
 #define MIN_RESULT -1
 #endif
 
-template <typename Node_type, typename Value_type = int> class INodeTool
+template <typename Node, typename Value = int> class INodeTool
 {
 public:
-	typedef Node_type Node;
-	typedef Value_type Value;
+	typedef Node Node_type;
+	typedef Value Value_type;
 	virtual ~INodeTool() { }
 	// sets node to be processed
 	virtual void set_Node(Node*) = 0;
@@ -41,8 +41,8 @@ public:
 template <typename Tool_type> class AlphaBeta
 {
 public:
-	typedef typename Tool_type::Node Node;
-	typedef typename Tool_type::Value Value;
+	typedef typename Tool_type::Node_type Node;
+	typedef typename Tool_type::Value_type Value;
 
 	// without_depth should be true when no depth restrictions are applied
 	AlphaBeta(Tool_type* ptool, bool without_depth = true) : m_pfunc(ptool), m_with_depth(!without_depth)
@@ -51,7 +51,7 @@ public:
 	
 	// Returns a pointer to a dynamic object representing best next state
 	// might return a nullptr if MIN_RESULT is defined incorrectly
-	Node* NextState(Node* pcurrentState, int depth = 0) const
+	Node* NextState(Node* pcurrentState, int depth = 3) const
 	{
 		m_pfunc->set_Node(pcurrentState);
 		std::set<Node*> childStates = m_pfunc->ChildNodes(true);
@@ -59,7 +59,7 @@ public:
 		std::pair<Value, Node*> best = { MIN_RESULT, nullptr };
 		for (std::set<Node*>::const_iterator it = childStates.begin(); it != childStates.end(); ++it)
 		{
-			Value temp = Algorithm(*it, false);
+			Value temp = Algorithm(*it, false, depth);
 			if (temp >= best.first)
 				best = { temp, *it };
 		}
@@ -69,7 +69,7 @@ public:
 		return best.second;
 	}
 private:
-	Value Algorithm(Node* node, bool maximizing_player, int depth = 0, Value alpha = MIN_RESULT, Value beta = MAX_RESULT) const
+	Value Algorithm(Node* node, bool maximizing_player, int depth, Value alpha = MIN_RESULT, Value beta = MAX_RESULT) const
 	{
 		m_pfunc->set_Node(node);
 		if (m_pfunc->TerminalNode() || (m_with_depth && depth == 0))

@@ -25,6 +25,7 @@
 namespace Draughts
 {
 	typedef Field<FSIZE> Board;
+	typedef ChessBoard<FSIZE> DraughtsBoard;
 	typedef char Result;
 	typedef INodeTool<Board, Result> DraughtsTool;
 	typedef MoveFinder<FSIZE> MFinder;
@@ -117,7 +118,7 @@ namespace Draughts
 		void Rec_func(Piece* piece, Board* pb)
 		{
 			Board* pnewboard = new Board(*pb);
-			Piece *p = pnewboard->operator()(m_pboard->Lpos_of(piece), m_pboard->Npos_of(piece));
+			Piece *p = pnewboard->operator()(pb->Lpos_of(piece), pb->Npos_of(piece));
 			p->Accept(*m_pop);
 			m_pvec->insert(pnewboard);
 		}
@@ -158,14 +159,14 @@ namespace Draughts
 		void Rec_func(Piece* piece, Board* pb)
 		{
 			Board* pnewboard = new Board(*pb);
-			Piece *p = pnewboard->operator()(m_pboard->Lpos_of(piece), m_pboard->Npos_of(piece));
-			p->Accept(*m_pop); // initial jump
+			Piece *p = pnewboard->operator()(pb->Lpos_of(piece), pb->Npos_of(piece));
+			p->Accept(*m_pop); // initial jump // ERROR: does not jump
 
 			MFinder newmf(*pnewboard);
 			p->Accept(newmf);
 			if (newmf.RJumpies().empty() && newmf.LJumpies().empty())
 			{	// no multiple jumps
-				m_pvec->insert(pnewboard);
+				m_pvec->insert(pnewboard); // ERROR: NEVER EXECUTED, INFINITE LOOP
 			}
 			else
 			{	// multiple jumps
@@ -228,7 +229,7 @@ namespace Draughts
 	class Game
 	{
 	public:
-		Game() :m_pbt(nullptr), m_pAB(nullptr), m_side_set(false)
+		Game() :m_board(), m_pbt(nullptr), m_pAB(nullptr), m_side_set(false)
 		{ }
 		~Game()
 		{
@@ -240,7 +241,7 @@ namespace Draughts
 			m_side_set = true;
 			m_AIside = AIside;
 			m_pbt = new BoardTool(m_AIside);
-			m_pAB = new AlphaBeta<BoardTool>(m_pbt);
+			m_pAB = new AlphaBeta<BoardTool>(m_pbt, false);
 		}
 		void Reset()
 		{
@@ -302,12 +303,6 @@ namespace Draughts
 					pop = new RMove(m_board);
 				else
 					return false;
-
-				if (p->King())
-					DirectionOf(p) = (direction == Dirn::rightup) ? UP : DOWN;
-				p->Accept(*pop);
-				delete pop;
-				return true;
 			}
 			else // leftup or leftdown
 			{
@@ -319,13 +314,12 @@ namespace Draughts
 					pop = new LMove(m_board);
 				else
 					return false;
-
-				if (p->King())
-					DirectionOf(p) = (direction == Dirn::leftup) ? UP : DOWN;
-				p->Accept(*pop);
-				delete pop;
-				return true;
 			}
+			if (p->King())
+				DirectionOf(p) = (direction == Dirn::leftup) ? UP : DOWN;
+			p->Accept(*pop);
+			delete pop;
+			return true;
 		}
 	private:
 		Board m_board;
@@ -386,10 +380,10 @@ namespace Draughts
 #pragma warning( push )
 #pragma warning( disable : 4800 )
 #pragma warning( disable : 4244 )
-	class WinBoard :public ChessBoard<FSIZE>
+	class WinBoard :public DraughtsBoard
 	{
 	public:
-		WinBoard(CRect* pclient_rect, CDC* pDC) :ChessBoard<FSIZE>(pclient_rect, pDC)
+		WinBoard(CRect* pclient_rect, CDC* pDC) :DraughtsBoard(pclient_rect, pDC)
 		{
 			CSize color_button_size = pDC->GetTextExtent("White");
 			color_button_size.cx += 10;
@@ -421,7 +415,7 @@ namespace Draughts
 		}
 		void Display(CDC* pDC, Game* pgame)
 		{
-			ChessBoard<FSIZE>::Display(pDC);
+			DraughtsBoard::Display(pDC);
 			pDC->SelectStockObject(HOLLOW_BRUSH);
 			pDC->Rectangle(m_reset_button);
 			if (!pgame->IsSideSet())
@@ -452,7 +446,10 @@ namespace Draughts
 	{
 	public:
 		WinPieces(Game* game, WinBoard*& pwb) :m_pgame(game), m_ppwb(&pwb)
-		{ }
+		{
+			if ((*m_ppwb) != nullptr)
+				Update();
+		}
 		void Update()
 		{
 			m_whitemen.clear();

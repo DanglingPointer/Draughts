@@ -7,7 +7,7 @@
 
 struct Pos
 {
-	Pos(char letter, unsigned int digit) :letter(letter), digit(digit)
+	Pos(char letter = 0, unsigned int digit = 0) :letter(letter), digit(digit)
 	{ }
 	char letter;
 	unsigned int digit;
