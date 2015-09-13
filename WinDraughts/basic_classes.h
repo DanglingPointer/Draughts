@@ -1,10 +1,6 @@
 #pragma once
 // Rules: https://en.wikipedia.org/wiki/English_draughts
 
-/** TODO: IField instead of Field<>
-* fix engine.h (rec_func and loop_func)
-**/
-
 #include<utility>
 #include<set>
 
@@ -615,6 +611,7 @@ namespace Draughts
 		void set_Board(IField* pf)
 		{
 			JumpTool::m_pboard = MoveTool::m_pboard = pf;
+			Clear();
 		}
 		std::set<Piece*> RJumpies() const
 		{

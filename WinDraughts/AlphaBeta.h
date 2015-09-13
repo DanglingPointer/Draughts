@@ -52,7 +52,7 @@ public:
 	
 	// Returns a pointer to a dynamic object representing best next state
 	// might return a nullptr if MIN_RESULT is defined incorrectly
-	Node* NextState(Node* pcurrentState, int depth = 1) const
+	Node* NextState(Node* pcurrentState, int depth = 0) const
 	{
 		m_pfunc->set_Node(pcurrentState);
 		std::set<Node*> childStates = m_pfunc->ChildNodes(true);
