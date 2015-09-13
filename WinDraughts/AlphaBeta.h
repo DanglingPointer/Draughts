@@ -33,7 +33,8 @@ public:
 	virtual Value NodeValue() const = 0;
 	// @returns true if the node is terminal, false otherwise
 	virtual bool TerminalNode() const = 0;
-	// @returns a set containing all child nodes of the given node
+	// @returns a set containing pointers to all child nodes of the given node
+	// the childs nodes will be deleted aftewards
 	virtual std::set<Node*> ChildNodes(bool maximizing_side) = 0;
 };
 
@@ -51,7 +52,7 @@ public:
 	
 	// Returns a pointer to a dynamic object representing best next state
 	// might return a nullptr if MIN_RESULT is defined incorrectly
-	Node* NextState(Node* pcurrentState, int depth = 3) const
+	Node* NextState(Node* pcurrentState, int depth = 1) const
 	{
 		m_pfunc->set_Node(pcurrentState);
 		std::set<Node*> childStates = m_pfunc->ChildNodes(true);

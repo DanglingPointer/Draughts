@@ -63,7 +63,7 @@ inline void CMainFrame::OnLButtonDown(UINT nFlags, CPoint pt)
 		return;
 	}
 	m_caught_pos = m_pwb->SquareOfPt(pt);
-	Piece* pp = (m_game.get_Board())(m_caught_pos.letter, m_caught_pos.digit);
+	Piece* pp = (m_game.get_Board())->at(m_caught_pos.letter, m_caught_pos.digit);
 	if (pp != nullptr && pp->White() == !m_game.AIside())
 	{
 		m_caught_pt = pt;

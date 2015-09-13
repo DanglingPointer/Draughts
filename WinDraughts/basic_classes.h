@@ -1,6 +1,10 @@
 #pragma once
 // Rules: https://en.wikipedia.org/wiki/English_draughts
 
+/** TODO: IField instead of Field<>
+* fix engine.h (rec_func and loop_func)
+**/
+
 #include<utility>
 #include<set>
 
@@ -21,12 +25,24 @@ namespace Draughts
 {
 	typedef bool color;
 	class Piece;
-
-	__interface Operation // Visitor interface
+	__interface IField // Board of variable size
 	{
-		void WhitePiece(Piece* p);
-		void BlackPiece(Piece* p);
-		void King(Piece* p);
+		Piece*& at(char, unsigned int);
+		Piece* at(char, unsigned int) const;
+		unsigned int Size() const;
+		bool Inside(char, unsigned int) const;
+		char Lpos_of(Piece*) const;
+		unsigned int Npos_of(Piece*) const;
+		bool Win(color&) const;
+		bool Draw() const;
+		void Reset();
+	};
+	__interface IOperation // Visitor
+	{
+		void WhitePiece(Piece*);
+		void BlackPiece(Piece*);
+		void King(Piece*);
+		void set_Board(IField*);
 	};
 	//-------------------------------------------------------------------------------------------------
 	class Piece
@@ -37,7 +53,7 @@ namespace Draughts
 	public:
 		virtual ~Piece()
 		{ }
-		virtual void Accept(Operation&) = 0;
+		virtual void Accept(IOperation&) = 0;
 		bool King() const
 		{
 			return m_king;
@@ -67,7 +83,7 @@ namespace Draughts
 		King<color>() :Piece(color, KING)
 		{ }
 		Direction dirn;
-		void Accept(Operation& op)
+		void Accept(IOperation& op)
 		{
 			op.King(this);
 		}
@@ -77,7 +93,7 @@ namespace Draughts
 	public:
 		Man<color>():Piece(color, MAN)
 		{ }
-		void Accept(Operation& op)
+		void Accept(IOperation& op)
 		{
 			if (White()) op.WhitePiece(this);
 			else op.BlackPiece(this);
@@ -88,7 +104,7 @@ namespace Draughts
 	typedef Man<WHITE> WhitePiece;
 	typedef Man<BLACK> BlackPiece;
 	//-------------------------------------------------------------------------------------------------
-	template<unsigned int size> class Field
+	template<unsigned int size> class Field :public IField
 	{
 	public:
 		Field<size>()
@@ -97,16 +113,32 @@ namespace Draughts
 		}
 		Field<size>(const Field<size>& f)
 		{
-			Copy(f);
-		}
-		Field<size>& operator = (const Field<size>& f)
-		{
 			for (int i = 0; i < size*size; ++i)
-				if (*(m_field + i) != nullptr)
-					delete *(m_field + i);
-			Copy(f);
-			return *this;
+			{
+				if (f.m_field[i] == nullptr)
+					m_field[i] = nullptr;
+				else if (!(f.m_field[i]->King()))
+					f.m_field[i]->White() ? (m_field[i] = new WhitePiece) : (m_field[i] = new BlackPiece);
+				else
+					f.m_field[i]->White() ? (m_field[i] = new WhiteKing) : (m_field[i] = new BlackKing);
+			}
 		}
+		explicit Field<size>(IField* pf) // size must be equal
+		{
+			for (unsigned int num = 1; num <= size; ++num)
+				for (char letter = 'a'; letter < 'a' + size; ++letter)
+				{
+					if (pf->at(letter, num) == nullptr)
+						at(letter, num) = nullptr;
+					else if (!(pf->at(letter, num)->King()))
+						pf->at(letter, num)->White() ? (at(letter, num) = new WhitePiece) : (at(letter, num) = new BlackPiece);
+					else
+						pf->at(letter, num)->White() ? (at(letter, num) = new WhiteKing) : (at(letter, num) = new BlackKing);
+				}
+		}
+		Field<size>(const IField&) = delete;
+		Field<size>& operator = (const Field<size>& f) = delete;
+		Field<size>& operator = (const IField& f) = delete;
 		~Field<size>()
 		{
 			for (int i = 0; i < size*size; ++i)
@@ -114,14 +146,18 @@ namespace Draughts
 					delete m_field[i];
 		}
 		// Lower case letter required
-		Piece*& operator() (char letter, unsigned int num)
+		Piece*& at(char letter, unsigned int num)
 		{
 			return m_field[(num - 1) * size + (letter - 'a')];
 		}
 		// Lower case letter required
-		Piece* operator() (char letter, unsigned int num) const
+		Piece* at(char letter, unsigned int num) const
 		{
 			return m_field[(num - 1) * size + (letter - 'a')];
+		}
+		unsigned int Size() const
+		{
+			return size;
 		}
 		// Lower case letter required
 		bool Inside(char letter, unsigned int num) const
@@ -132,7 +168,7 @@ namespace Draughts
 		{
 			for (char letter = 'a'; letter < 'a' + size; ++letter)
 				for (unsigned int num = 1; num <= size; ++num)
-					if (operator()(letter, num) == p)
+					if (at(letter, num) == p)
 						return letter;
 			return 0;
 		}
@@ -140,7 +176,7 @@ namespace Draughts
 		{
 			for (char letter = 'a'; letter < 'a' + size; ++letter)
 				for (unsigned int num = 1; num <= size; ++num)
-					if (operator()(letter, num) == p)
+					if (at(letter, num) == p)
 						return num;
 			return 0;
 		}
@@ -164,7 +200,7 @@ namespace Draughts
 			{
 				Piece* p = *(m_field + i);
 				if (p != nullptr)
-					p->White() ? ++num_white : ++num_black;
+					(p->White()) ? (++num_white) : (++num_black);
 			}
 			if (num_white == 1 && num_black == 1)
 				return true;
@@ -185,23 +221,11 @@ namespace Draughts
 
 			for (unsigned int row = 1; row < size / 2; ++row)
 				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
-					operator()(letter, row) = new WhitePiece;
+					at(letter, row) = new WhitePiece;
 
 			for (unsigned int row = size; row > size / 2 + 1; --row)
 				for (char letter = (row % 2) ? 'a' : 'b'; letter < 'a' + size; letter += 2)
-					operator()(letter, row) = new BlackPiece;
-		}
-		void Copy(const Field<size>& f)
-		{
-			for (int i = 0; i < size*size; ++i)
-			{
-				if (f.m_field[i] == nullptr)
-					m_field[i] = nullptr;
-				else if (!f.m_field[i]->King())
-					f.m_field[i]->White() ? (m_field[i] = new WhitePiece) : (m_field[i] = new BlackPiece);
-				else
-					f.m_field[i]->White() ? (m_field[i] = new WhiteKing) : (m_field[i] = new BlackKing);
-			}
+					at(letter, row) = new BlackPiece;
 		}
 		Piece* m_field[size*size];
 	};
@@ -217,8 +241,8 @@ namespace Draughts
 			if (npos < 10) out << ' ';
 			out << npos << ' ';
 			for (char lpos = 'a'; lpos < 'a' + fsize; ++lpos)
-				if (f(lpos, npos) != nullptr)
-					out << ' ' << *f(lpos, npos);
+				if (f.at(lpos, npos) != nullptr)
+					out << ' ' << *(f.at(lpos, npos));
 				else
 					out << " -";
 			out << "\n";
@@ -234,91 +258,91 @@ namespace Draughts
 	}
 #endif
 	//------------------------------------------------------------------------------------------------
-	template<unsigned int size> class MoveTool
+	class MoveTool
 	{
 	public:
-		MoveTool(Field<size>& f) :m_board(f)
+		MoveTool(IField* pf) :m_pboard(pf)
 		{ }
 		bool movable_right_up(Piece* p) const
 		{
-			return m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) && 
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) == nullptr;
+			return m_pboard->Inside(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + 1) && 
+				m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + 1) == nullptr;
 		}
 		bool movable_left_up(Piece* p) const
 		{
-			return m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) && 
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) == nullptr;
+			return m_pboard->Inside(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + 1) && 
+				m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + 1) == nullptr;
 		}
 		bool movable_right_down(Piece* p) const
 		{
-			return m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) && 
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) == nullptr;
+			return m_pboard->Inside(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) - 1) && 
+				m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) - 1) == nullptr;
 		}
 		bool movable_left_down(Piece* p) const
 		{
-			return m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) && 
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) == nullptr;
+			return m_pboard->Inside(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) - 1) && 
+				m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) - 1) == nullptr;
 		}
 	protected:
-		Field<size>& m_board;
+		IField* m_pboard;
 	};
-	template<unsigned int size> class JumpTool
+	class JumpTool
 	{
 	public:
-		JumpTool(Field<size>& f) :m_board(f)
+		JumpTool(IField* pf) :m_pboard(pf)
 		{ }
 		bool jumpable_right_up(Piece* p) const
 		{
 			return (
-				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) + 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1)->White() && !p->White())
+				m_pboard->Inside(m_pboard->Lpos_of(p) + 2, m_pboard->Npos_of(p) + 2) && m_pboard->at(m_pboard->Lpos_of(p) + 2, m_pboard->Npos_of(p) + 2) == nullptr &&
+				m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + 1) != nullptr && (
+				(!m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + 1)->White() && p->White()) || (m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + 1)->White() && !p->White())
 				));
 		}
 		bool jumpable_left_up(Piece* p) const
 		{
 			return (
-				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) + 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1)->White() && !p->White())
+				m_pboard->Inside(m_pboard->Lpos_of(p) - 2, m_pboard->Npos_of(p) + 2) && m_pboard->at(m_pboard->Lpos_of(p) - 2, m_pboard->Npos_of(p) + 2) == nullptr &&
+				m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + 1) != nullptr && (
+				(!m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + 1)->White() && p->White()) || (m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + 1)->White() && !p->White())
 				));
 		}
 		bool jumpable_right_down(Piece* p) const
 		{
 			return (
-				m_board.Inside(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) + 2, m_board.Npos_of(p) - 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1)->White() && !p->White())
+				m_pboard->Inside(m_pboard->Lpos_of(p) + 2, m_pboard->Npos_of(p) - 2) && m_pboard->at(m_pboard->Lpos_of(p) + 2, m_pboard->Npos_of(p) - 2) == nullptr &&
+				m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) - 1) != nullptr && (
+				(!m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) - 1)->White() && p->White()) || (m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) - 1)->White() && !p->White())
 				));
 		}
 		bool jumpable_left_down(Piece* p) const
 		{
 			return (
-				m_board.Inside(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) && m_board(m_board.Lpos_of(p) - 2, m_board.Npos_of(p) - 2) == nullptr &&
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) != nullptr && (
-				(!m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && p->White()) || (m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1)->White() && !p->White())
+				m_pboard->Inside(m_pboard->Lpos_of(p) - 2, m_pboard->Npos_of(p) - 2) && m_pboard->at(m_pboard->Lpos_of(p) - 2, m_pboard->Npos_of(p) - 2) == nullptr &&
+				m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) - 1) != nullptr && (
+				(!m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) - 1)->White() && p->White()) || (m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) - 1)->White() && !p->White())
 				));
 		}
 	protected:
-		Field<size>& m_board;
+		IField* m_pboard;
 	};
 	//------------------------------------------------------------------------------------------------
-	template<unsigned int size> class RightMove :public Operation, protected MoveTool < size >
+	class RightMove :public IOperation, protected MoveTool
 	{
 	public:
-		RightMove(Field<size>& f) :MoveTool<size>(f)
+		RightMove(IField* pf) :MoveTool(pf)
 		{ }
 		void WhitePiece(Piece* p)
 		{
 			if (movable_right_up(p))
 			{
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first + 1, temp.second + 1) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first + 1, temp.second + 1) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
-			if (m_board.Npos_of(p) == size)
+			if (m_pboard->Npos_of(p) == m_pboard->Size())
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new WhiteKing;
+				m_pboard->at(m_pboard->Lpos_of(p), m_pboard->Npos_of(p)) = new WhiteKing;
 				delete p;
 			}
 		}
@@ -326,13 +350,13 @@ namespace Draughts
 		{
 			if (movable_right_down(p))
 			{
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first + 1, temp.second - 1) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first + 1, temp.second - 1) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
-			if (m_board.Npos_of(p) == 1)
+			if (m_pboard->Npos_of(p) == 1)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new BlackKing;
+				m_pboard->at(m_pboard->Lpos_of(p), m_pboard->Npos_of(p)) = new BlackKing;
 				delete p;
 			}
 		}
@@ -340,30 +364,34 @@ namespace Draughts
 		{
 			int steps = DirectionOf(p);
 
-			if (m_board.Inside(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + steps) && m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + steps) == nullptr)
+			if (m_pboard->Inside(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + steps) && m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + steps) == nullptr)
 			{
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first + 1, temp.second + steps) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first + 1, temp.second + steps) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
 		}
+		void set_Board(IField* pf)
+		{
+			m_pboard = pf;
+		}
 	};
-	template<unsigned int size> class LeftMove :public Operation, protected MoveTool < size >
+	class LeftMove :public IOperation, protected MoveTool
 	{
 	public:
-		LeftMove(Field<size>& f) :MoveTool<size>(f)
+		LeftMove(IField* pf) :MoveTool(pf)
 		{ }
 		void WhitePiece(Piece* p)
 		{
 			if (movable_left_up(p))
 			{
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 1, temp.second + 1) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first - 1, temp.second + 1) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
-			if (m_board.Npos_of(p) == size)
+			if (m_pboard->Npos_of(p) == m_pboard->Size())
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new WhiteKing;
+				m_pboard->at(m_pboard->Lpos_of(p), m_pboard->Npos_of(p)) = new WhiteKing;
 				delete p;
 			}
 		}
@@ -371,13 +399,13 @@ namespace Draughts
 		{
 			if (movable_left_down(p))
 			{
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 1, temp.second - 1) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first - 1, temp.second - 1) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
-			if (m_board.Npos_of(p) == 1)
+			if (m_pboard->Npos_of(p) == 1)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new BlackKing;
+				m_pboard->at(m_pboard->Lpos_of(p), m_pboard->Npos_of(p)) = new BlackKing;
 				delete p;
 			}
 		}
@@ -385,35 +413,39 @@ namespace Draughts
 		{
 			int steps = DirectionOf(p);
 
-			if (m_board.Inside(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) && 
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + steps) == nullptr)
+			if (m_pboard->Inside(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + steps) && 
+				m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + steps) == nullptr)
 			{
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 1, temp.second + steps) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first - 1, temp.second + steps) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
+		}
+		void set_Board(IField* pf)
+		{
+			m_pboard = pf;
 		}
 	};
 	//------------------------------------------------------------------------------------------------
-	template<unsigned int size> class RightJump :public Operation, protected JumpTool < size >
+	class RightJump :public IOperation, protected JumpTool
 	{
 	public:
-		RightJump(Field<size>& f) :JumpTool<size>(f)
+		RightJump(IField* pf) :JumpTool(pf)
 		{ }
 		void WhitePiece(Piece* p)
 		{
 			if (jumpable_right_up(p))
 			{
-				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
+				delete m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + 1);
+				m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + 1) = nullptr;
 
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first + 2, temp.second + 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first + 2, temp.second + 2) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
-			if (m_board.Npos_of(p) == size)
+			if (m_pboard->Npos_of(p) == m_pboard->Size())
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new WhiteKing;
+				m_pboard->at(m_pboard->Lpos_of(p), m_pboard->Npos_of(p)) = new WhiteKing;
 				delete p;
 			}
 		}
@@ -421,16 +453,16 @@ namespace Draughts
 		{
 			if (jumpable_right_down(p))
 			{
-				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
+				delete m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) - 1);
+				m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) - 1) = nullptr;
 
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first + 2, temp.second - 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first + 2, temp.second - 2) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
-			if (m_board.Npos_of(p) == 1)
+			if (m_pboard->Npos_of(p) == 1)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new BlackKing;
+				m_pboard->at(m_pboard->Lpos_of(p), m_pboard->Npos_of(p)) = new BlackKing;
 				delete p;
 			}
 		}
@@ -440,43 +472,47 @@ namespace Draughts
 
 			if (direction == UP && jumpable_right_up(p))
 			{
-				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1);
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) + 1) = nullptr;
+				delete m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + 1);
+				m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) + 1) = nullptr;
 
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first + 2, temp.second + 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first + 2, temp.second + 2) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
 			else if (direction == DOWN && jumpable_right_down(p))
 			{
-				delete m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1);
-				m_board(m_board.Lpos_of(p) + 1, m_board.Npos_of(p) - 1) = nullptr;
+				delete m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) - 1);
+				m_pboard->at(m_pboard->Lpos_of(p) + 1, m_pboard->Npos_of(p) - 1) = nullptr;
 
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first + 2, temp.second - 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first + 2, temp.second - 2) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
 		}
+		void set_Board(IField* pf)
+		{
+			m_pboard = pf;
+		}
 	};
-	template<unsigned int size> class LeftJump :public Operation, protected JumpTool < size >
+	class LeftJump :public IOperation, protected JumpTool
 	{
 	public:
-		LeftJump(Field<size>& f) :JumpTool<size>(f)
+		LeftJump(IField* pf) :JumpTool(pf)
 		{ }
 		void WhitePiece(Piece* p)
 		{
 			if (jumpable_left_up(p))
 			{
-				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
+				delete m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + 1);
+				m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + 1) = nullptr;
 
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 2, temp.second + 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first - 2, temp.second + 2) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
-			if (m_board.Npos_of(p) == size)
+			if (m_pboard->Npos_of(p) == m_pboard->Size())
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new WhiteKing;
+				m_pboard->at(m_pboard->Lpos_of(p), m_pboard->Npos_of(p)) = new WhiteKing;
 				delete p;
 			}
 		}
@@ -484,16 +520,16 @@ namespace Draughts
 		{
 			if (jumpable_left_down(p))
 			{
-				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
+				delete m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) - 1);
+				m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) - 1) = nullptr;
 
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 2, temp.second - 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first - 2, temp.second - 2) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
-			if (m_board.Npos_of(p) == 1)
+			if (m_pboard->Npos_of(p) == 1)
 			{
-				m_board(m_board.Lpos_of(p), m_board.Npos_of(p)) = new BlackKing;
+				m_pboard->at(m_pboard->Lpos_of(p), m_pboard->Npos_of(p)) = new BlackKing;
 				delete p;
 			}
 		}
@@ -503,29 +539,33 @@ namespace Draughts
 
 			if (direction == UP && jumpable_left_up(p))
 			{
-				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1);
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) + 1) = nullptr;
+				delete m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + 1);
+				m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) + 1) = nullptr;
 
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 2, temp.second + 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first - 2, temp.second + 2) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
 			else if (direction == DOWN && jumpable_left_down(p))
 			{
-				delete m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1);
-				m_board(m_board.Lpos_of(p) - 1, m_board.Npos_of(p) - 1) = nullptr;
+				delete m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) - 1);
+				m_pboard->at(m_pboard->Lpos_of(p) - 1, m_pboard->Npos_of(p) - 1) = nullptr;
 
-				std::pair<char, unsigned int> temp(m_board.Lpos_of(p), m_board.Npos_of(p));
-				m_board(temp.first - 2, temp.second - 2) = p;
-				m_board(temp.first, temp.second) = nullptr;
+				std::pair<char, unsigned int> temp(m_pboard->Lpos_of(p), m_pboard->Npos_of(p));
+				m_pboard->at(temp.first - 2, temp.second - 2) = p;
+				m_pboard->at(temp.first, temp.second) = nullptr;
 			}
+		}
+		void set_Board(IField* pf)
+		{
+			m_pboard = pf;
 		}
 	};
 	//------------------------------------------------------------------------------------------------
-	template<unsigned int size> class MoveFinder :public Operation, protected JumpTool < size >, protected MoveTool < size >
+	class MoveFinder :public IOperation, protected JumpTool, protected MoveTool
 	{ // Should go through all pieces on one side at a time, then clear buffers
 	public:
-		MoveFinder(Field<size>& f) :JumpTool<size>(f), MoveTool<size>(f)
+		MoveFinder(IField* pf) :JumpTool(pf), MoveTool(pf)
 		{ }
 		void WhitePiece(Piece* p)
 		{
@@ -571,6 +611,10 @@ namespace Draughts
 				if (movable_left_down(p) || movable_left_up(p))
 					m_lmovies.insert(p);
 			}
+		}
+		void set_Board(IField* pf)
+		{
+			JumpTool::m_pboard = MoveTool::m_pboard = pf;
 		}
 		std::set<Piece*> RJumpies() const
 		{

@@ -25,67 +25,48 @@
 namespace Draughts
 {
 	typedef Field<FSIZE> Board;
+#ifndef _CONSOLE
 	typedef ChessBoard<FSIZE> DraughtsBoard;
+#endif
 	typedef char Result;
-	typedef INodeTool<Board, Result> DraughtsTool;
-	typedef MoveFinder<FSIZE> MFinder;
-	typedef RightJump<FSIZE> RJump;
-	typedef LeftJump<FSIZE> LJump;
-	typedef RightMove<FSIZE> RMove;
-	typedef LeftMove<FSIZE> LMove;
+	typedef INodeTool<IField, Result> DraughtsTool;
+	typedef MoveFinder MFinder;
+	typedef RightJump RJump;
+	typedef LeftJump LJump;
+	typedef RightMove RMove;
+	typedef LeftMove LMove;
 	typedef std::set<Piece*> pset;
 	//-------------------------------------------------------------------------------------------------
 	class IStateFinder
 	{
 	public:
-		IStateFinder(Board* pnode, std::set<Board*>& resvec, color turn) 
-			:m_turn(turn), m_pboard(pnode), m_pvec(&resvec), m_mf(*pnode), m_pop(nullptr)
+		IStateFinder(IField* pnode, std::set<IField*>& resvec, color turn) 
+			:m_turn(turn), m_pboard(pnode), m_pvec(&resvec), m_mf(pnode)
 		{
-			Board& board = *m_pboard;
-			for (char letter = 'a'; letter < 'a' + FSIZE; ++letter)
-				for (unsigned int num = 1; num <= FSIZE; ++num)
+			for (char letter = 'a'; letter < 'a' + m_pboard->Size(); ++letter)
+				for (unsigned int num = 1; num <= m_pboard->Size(); ++num)
 				{
-					if (board(letter, num) != nullptr && board(letter, num)->White() == m_turn)
-						board(letter, num)->Accept(m_mf);
+					if (m_pboard->at(letter, num) != nullptr && m_pboard->at(letter, num)->White() == m_turn)
+						m_pboard->at(letter, num)->Accept(m_mf);
 				}
 		}
-		void set_ResultVec(std::set<Board*>& resvec)
+		void set_ResultVec(std::set<IField*>& resvec)
 		{
 			m_pvec = &resvec;
 		}
-		void set_Board(Board* pb)
-		{
-			m_pboard = pb;
-		}
-		virtual std::set<Board*>* FindStates() = 0;
+		virtual std::set<IField*>* FindStates() = 0;
 		virtual bool Empty() const = 0;
 		virtual void Clear() = 0;
 	protected:
 		color m_turn;
-		Board* m_pboard;
-		std::set<Board*>* m_pvec;
+		IField* m_pboard;
+		std::set<IField*>* m_pvec;
 		MFinder m_mf;
-		Operation* m_pop;
-		virtual void Rec_func(Piece* piece, Board* pb) = 0;
-		template <class Visitor> void Loop_func(Piece* p, Board* pb)
-		{
-			m_pop = new Visitor(*pb);
-			if (p->King())
-			{
-				DirectionOf(p) = UP;
-				Rec_func(p, pb);
-				delete m_pop;
-				m_pop = new Visitor(*pb);
-				DirectionOf(p) = DOWN;
-			}
-			Rec_func(p, pb);
-			delete m_pop;
-		}
 	};
 	class MoviesFinder :public IStateFinder
 	{
 	public:
-		MoviesFinder(Board* pnode, std::set<Board*>& resvec, color turn) :IStateFinder(pnode, resvec, turn)
+		MoviesFinder(IField* pnode, std::set<IField*>& resvec, color turn) :IStateFinder(pnode, resvec, turn)
 		{
 			m_rmovies = m_mf.RMovies();
 			m_lmovies = m_mf.LMovies();
@@ -94,17 +75,16 @@ namespace Draughts
 		{
 			return m_lmovies.empty() && m_rmovies.empty();
 		}
-		std::set<Board*>* FindStates()
+		std::set<IField*>* FindStates()
 		{
 			for (std::set<Piece*>::const_iterator it = m_rmovies.begin(); it != m_rmovies.end(); ++it)
 			{
-				Loop_func<RMove>(*it, m_pboard);
+				Iter_func<RMove>(*it, m_pboard);
 			}
 			for (std::set<Piece*>::const_iterator it = m_lmovies.begin(); it != m_lmovies.end(); ++it)
 			{
-				Loop_func<LMove>(*it, m_pboard);
+				Iter_func<LMove>(*it, m_pboard);
 			}
-			m_pop = nullptr;
 			return m_pvec;
 		}
 		void Clear()
@@ -115,18 +95,28 @@ namespace Draughts
 	private:
 		pset m_rmovies;
 		pset m_lmovies;
-		void Rec_func(Piece* piece, Board* pb)
+		template <class Visitor> void Iter_func(Piece* piece, IField* pb)
 		{
-			Board* pnewboard = new Board(*pb);
-			Piece *p = pnewboard->operator()(pb->Lpos_of(piece), pb->Npos_of(piece));
-			p->Accept(*m_pop);
+			if (piece->King()) 
+			{
+				DirectionOf(piece) = UP;
+				OneDirn_move<Visitor>(piece, pb);
+				DirectionOf(piece) = DOWN;
+			}
+			OneDirn_move<Visitor>(piece, pb);
+		}
+		template <class Visitor> void OneDirn_move(Piece* piece, IField* pb)
+		{
+			IField* pnewboard = new Board(pb);
+			Piece *p = pnewboard->at(pb->Lpos_of(piece), pb->Npos_of(piece));
+			p->Accept(Visitor(pnewboard));
 			m_pvec->insert(pnewboard);
 		}
 	};
 	class JumpiesFinder :public IStateFinder
 	{
 	public:
-		JumpiesFinder(Board* pnode, std::set<Board*>& resvec, color turn) :IStateFinder(pnode, resvec, turn)
+		JumpiesFinder(IField* pnode, std::set<IField*>& resvec, color turn) :IStateFinder(pnode, resvec, turn)
 		{
 			m_rjumpies = m_mf.RJumpies();
 			m_ljumpies = m_mf.LJumpies();
@@ -135,17 +125,16 @@ namespace Draughts
 		{
 			return m_ljumpies.empty() && m_rjumpies.empty();
 		}
-		std::set<Board*>* FindStates()
+		std::set<IField*>* FindStates()
 		{
 			for (std::set<Piece*>::const_iterator it = m_rjumpies.begin(); it != m_rjumpies.end(); ++it)
 			{
-				Loop_func<RJump>(*it, m_pboard);
+				Rec_func<RJump>(*it, m_pboard);
 			}
 			for (std::set<Piece*>::const_iterator it = m_ljumpies.begin(); it != m_ljumpies.end(); ++it)
 			{
-				Loop_func<LJump>(*it, m_pboard);
+				Rec_func<LJump>(*it, m_pboard);
 			}
-			m_pop = nullptr;
 			return m_pvec;
 		}
 		void Clear()
@@ -156,24 +145,34 @@ namespace Draughts
 	private:
 		pset m_rjumpies;
 		pset m_ljumpies;
-		void Rec_func(Piece* piece, Board* pb)
+		template <class Visitor> void Rec_func(Piece* piece, IField* pb)
 		{
-			Board* pnewboard = new Board(*pb);
-			Piece *p = pnewboard->operator()(pb->Lpos_of(piece), pb->Npos_of(piece));
-			p->Accept(*m_pop); // initial jump // ERROR: does not jump
+			if (piece->King())
+			{
+				DirectionOf(piece) = UP;
+				OneDirn_jump<Visitor>(piece, pb);
+				DirectionOf(piece) = DOWN;
+			}
+			OneDirn_jump<Visitor>(piece, pb);
+		}
+		template <class Visitor> void OneDirn_jump(Piece* piece, IField* pb)
+		{
+			IField* pnewboard = new Board(pb);
+			Piece *p = pnewboard->at(pb->Lpos_of(piece), pb->Npos_of(piece));
+			p->Accept(Visitor(pnewboard)); // initial jump
 
-			MFinder newmf(*pnewboard);
+			MFinder newmf(pnewboard);
 			p->Accept(newmf);
 			if (newmf.RJumpies().empty() && newmf.LJumpies().empty())
 			{	// no multiple jumps
-				m_pvec->insert(pnewboard); // ERROR: NEVER EXECUTED, INFINITE LOOP
+				m_pvec->insert(pnewboard); // ERROR: never executed
 			}
 			else
 			{	// multiple jumps
 				if (!newmf.RJumpies().empty())
-					Loop_func<RJump>(p, pnewboard);
+					Rec_func<RJump>(p, pnewboard);
 				if (!newmf.LJumpies().empty())
-					Loop_func<LJump>(p, pnewboard);
+					Rec_func<LJump>(p, pnewboard);
 				delete pnewboard;
 			}
 		}
@@ -184,7 +183,7 @@ namespace Draughts
 	public:
 		explicit BoardTool(color& AIside) :m_pcf(nullptr), m_pnode(nullptr), m_AIside(AIside)
 		{ }
-		void set_Node(Board* board)
+		void set_Node(IField* board)
 		{
 			m_pnode = board;
 		}
@@ -200,13 +199,13 @@ namespace Draughts
 			bool dummy = true;
 			return m_pnode->Win(dummy) || m_pnode->Draw();
 		}
-		std::set<Board*> ChildNodes(bool maximizing_side)
+		std::set<IField*> ChildNodes(bool maximizing_side)
 		{
 			bool turn = (maximizing_side) ? m_AIside : (!m_AIside);			
-			std::set<Board*> temp;
+			std::set<IField*> temp;
 
 			m_pcf = new JumpiesFinder(m_pnode, temp, turn);
-			if (!m_pcf->Empty()) // jump
+			if (!(m_pcf->Empty())) // jump
 			{
 				m_pcf->FindStates();
 			}
@@ -222,14 +221,14 @@ namespace Draughts
 		}
 	private:
 		IStateFinder* m_pcf;
-		Board* m_pnode;
+		IField* m_pnode;
 		color& m_AIside;
 	};
 	//-------------------------------------------------------------------------------------------------
 	class Game
 	{
 	public:
-		Game() :m_board(), m_pbt(nullptr), m_pAB(nullptr), m_side_set(false)
+		Game() :m_pboard(new Board), m_pbt(nullptr), m_pAB(nullptr), m_side_set(false)
 		{ }
 		~Game()
 		{
@@ -256,7 +255,7 @@ namespace Draughts
 				m_pbt = nullptr;
 			}
 			m_side_set = false;
-			m_board.Reset();
+			m_pboard->Reset();
 		}
 		bool IsSideSet() const
 		{
@@ -268,17 +267,17 @@ namespace Draughts
 				throw std::logic_error("AI side is not set");
 			return m_AIside;
 		}
-		const Board& get_Board() const
+		const IField* get_Board() const
 		{
-			return m_board;
+			return m_pboard;
 		}
 		bool AITurn()
 		{
 			if (!m_side_set)
 				return false;
-			Board* pnewstate = m_pAB->NextState(&m_board);
-			m_board = *pnewstate;
-			delete pnewstate;
+			IField* pnewstate = m_pAB->NextState(m_pboard);
+			delete m_pboard;
+			m_pboard = pnewstate;
 			return true;
 		}
 		enum class Dirn
@@ -289,18 +288,18 @@ namespace Draughts
 		{
 			if (!m_side_set)
 				return false;
-			Operation* pop;
-			Piece* p = m_board(letter, num);
-			MFinder mf(m_board);
+			IOperation* pop;
+			Piece* p = m_pboard->at(letter, num);
+			MFinder mf(m_pboard);
 			p->Accept(mf);
 			if (direction == Dirn::rightup || direction == Dirn::rightdown)
 			{
 				pset rjumpies = mf.RJumpies();
 				pset rmovies = mf.RMovies();
 				if (rjumpies.find(p) != rjumpies.end())
-					pop = new RJump(m_board);
+					pop = new RJump(m_pboard);
 				else if (rmovies.find(p) != rmovies.end())
-					pop = new RMove(m_board);
+					pop = new RMove(m_pboard);
 				else
 					return false;
 			}
@@ -309,9 +308,9 @@ namespace Draughts
 				pset ljumpies = mf.LJumpies();
 				pset lmovies = mf.LMovies();
 				if (ljumpies.find(p) != ljumpies.end())
-					pop = new LJump(m_board);
+					pop = new LJump(m_pboard);
 				else if (lmovies.find(p) != lmovies.end())
-					pop = new LMove(m_board);
+					pop = new LMove(m_pboard);
 				else
 					return false;
 			}
@@ -322,7 +321,7 @@ namespace Draughts
 			return true;
 		}
 	private:
-		Board m_board;
+		IField* m_pboard;
 		BoardTool* m_pbt;
 		AlphaBeta<BoardTool>* m_pAB;
 		bool m_AIside;
@@ -333,7 +332,7 @@ namespace Draughts
 	class CmdPlay
 	{
 	public:
-		CmdPlay() :m_lj(m_f), m_rj(m_f), m_lm(m_f), m_rm(m_f), m_mf(m_f)
+		CmdPlay() :m_lj(&m_f), m_rj(&m_f), m_lm(&m_f), m_rm(&m_f), m_mf(&m_f)
 		{ }
 		void Run() // no AI
 		{
@@ -346,35 +345,36 @@ namespace Draughts
 				std::cout << "Enter letter, number, direction(l/r): ";
 				std::cin >> letter >> num >> dirn;
 
-				if (m_f(letter, num) != nullptr && m_f(letter, num)->White())
+				if (m_f.at(letter, num) != nullptr /*&& m_f(letter, num)->White()*/)
 				{
-					if (m_f(letter, num)->King())
+					if (m_f.at(letter, num)->King())
 					{
 						char vdirn;
 						std::cout << "Enter king's vertical direction (u/d): ";
 						std::cin >> vdirn;
-						Direction* pd = &DirectionOf(m_f(letter, num));
-						*pd  = ((vdirn == 'u') ? UP : DOWN);
+						DirectionOf(m_f.at(letter, num)) = ((vdirn == 'u') ? UP : DOWN);
 					}
-					m_f(letter, num)->Accept(m_mf);
+					m_f.at(letter, num)->Accept(m_mf);
 					if (dirn == 'r')
-						(m_mf.RJumpies().empty()) ? m_f(letter, num)->Accept(m_rm) : m_f(letter, num)->Accept(m_rj);
+						(m_mf.RJumpies().empty()) ? m_f.at(letter, num)->Accept(m_rm) : m_f.at(letter, num)->Accept(m_rj);
 					else if (dirn == 'l')
-						(m_mf.LJumpies().empty()) ? m_f(letter, num)->Accept(m_lm) : m_f(letter, num)->Accept(m_lj);
+						(m_mf.LJumpies().empty()) ? m_f.at(letter, num)->Accept(m_lm) : m_f.at(letter, num)->Accept(m_lj);
 					else
 						break;
 				}
+				else
+					break;
 			}
 		}
 	private:
 		// Board:
 		Field<FSIZE> m_f;
 		// Visitors:
-		LeftJump<FSIZE> m_lj;
-		RightJump<FSIZE> m_rj;
-		LeftMove<FSIZE> m_lm;
-		RightMove<FSIZE> m_rm;
-		MoveFinder<FSIZE> m_mf;
+		LeftJump m_lj;
+		RightJump m_rj;
+		LeftMove m_lm;
+		RightMove m_rm;
+		MoveFinder m_mf;
 	};
 #else
 #pragma warning( push )
@@ -459,7 +459,7 @@ namespace Draughts
 			for (unsigned int row = 1; row <= FSIZE; ++row)
 				for (char letter = 'a'; letter < 'a' + FSIZE; ++letter)
 				{
-					Piece* pp = (m_pgame->get_Board())(letter, row);
+					Piece* pp = (m_pgame->get_Board())->at(letter, row);
 					if (pp != nullptr)
 					{
 						CRect temp = (*m_ppwb)->SquareAt(letter, row);
