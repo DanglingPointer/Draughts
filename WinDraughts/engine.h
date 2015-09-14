@@ -162,10 +162,10 @@ namespace Draughts
 			p->Accept(Visitor(pnewboard)); // initial jump
 
 			MFinder newmf(pnewboard);
-			p->Accept(newmf);
+			p->Accept(newmf);		// ERROR: segmentation fault
 			if (newmf.RJumpies().empty() && newmf.LJumpies().empty())
 			{	// no multiple jumps
-				m_pvec->insert(pnewboard); // ERROR: never executed
+				m_pvec->insert(pnewboard);
 			}
 			else
 			{	// multiple jumps
@@ -275,7 +275,7 @@ namespace Draughts
 		{
 			if (!m_side_set)
 				return false;
-			IField* pnewstate = m_pAB->NextState(m_pboard);
+			IField* pnewstate = m_pAB->NextState(m_pboard, 5);
 			delete m_pboard;
 			m_pboard = pnewstate;
 			return true;

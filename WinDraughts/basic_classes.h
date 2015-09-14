@@ -565,9 +565,9 @@ namespace Draughts
 		{ }
 		void WhitePiece(Piece* p)
 		{
-			if (jumpable_right_up(p) || jumpable_left_up(p))
+			if (jumpable_right_up(p))
 				m_rjumpies.insert(p);
-			if (jumpable_left_up(p)) 
+			if (jumpable_left_up(p))
 				m_ljumpies.insert(p);
 
 			if (m_rjumpies.empty() && m_ljumpies.empty())
