@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace Checkers
 {
+    //===============================================================================
     public static class Constants
     {
         public const ushort BoardSize = 8;
@@ -50,16 +51,19 @@ namespace Checkers
         ushort m_Row;
         ushort m_Col;
     }
+    //===============================================================================
+    /// <summary>
+    /// Wrapper around byte-field Piece[]. Performs elementary operations on pieces.
+    /// </summary>
+    //===============================================================================
     public class BoardBuilder
     {
-        //------------------------------------------------------
         public BoardBuilder()
         {
             m_Data = null;
             m_WhitePos = new List<Pos>();
             m_BlackPos = new List<Pos>();
             m_Log = new Stack<Operation>();
-
         }
         public Piece[] Field
         {
@@ -227,6 +231,8 @@ namespace Checkers
         List<Pos> m_BlackPos;
         Stack<Operation> m_Log;
     }
+    //===============================================================================
+    [Flags]
     public enum Direction : byte
     {
         None    = 0,
@@ -235,9 +241,11 @@ namespace Checkers
         RightDown = 4,
         LeftDown = 8
     }
+    //===============================================================================
     /// <summary>
     /// Moves right pieces to right positions if possible
     /// </summary>
+    //===============================================================================
     public interface Piececontroller
     {
         /// <summary>
@@ -297,6 +305,7 @@ namespace Checkers
         /// </summary>
         void KingMove(Direction dirn, Pos pos);
     }
+    //===============================================================================
     internal class WhitePiececontroller : Piececontroller
     {
         public WhitePiececontroller(BoardBuilder b)
@@ -561,7 +570,7 @@ namespace Checkers
         }
         /// <summary>
         /// Returns max number of possible successive jumps for a King at 'pos'.
-        /// 'nothere' is the direction where it cannot jump
+        /// 'nothere' is the direction where it cannot jump from 'pos'.
         /// </summary>
         private int MaxJumpKing(Pos pos, Direction nothere)
         {
@@ -579,6 +588,7 @@ namespace Checkers
         }
         BoardBuilder m_Builder;
     }
+    //===============================================================================
     internal class BlackPiececontroller : Piececontroller
     {
         public BlackPiececontroller(BoardBuilder b)
@@ -608,9 +618,12 @@ namespace Checkers
         }
         BoardBuilder m_Builder;
     }
+    //===============================================================================
     /// <summary>
-    /// Creates an array of child states from the current state
+    /// Creates an array of child states from the current game state.
+    /// To be created only once, then takes different fields.
     /// </summary>
+    //===============================================================================
     public class ChildGetter
     {
         private enum MoveType : byte
@@ -624,7 +637,12 @@ namespace Checkers
             m_Build = new BoardBuilder();   // configured by CurrentState.Set
             m_Righties = null;              // initialized by CurrentState.Set
             m_Lefties = null;               // initialized by CurrentState.Set
+            m_Kings = null;                 // initialized by CurrentState.Set
+            m_Kingdirns = null;             // initialized by CurrentState.Set
         }
+        /// <summary>
+        /// Whose turn it is now
+        /// </summary>
         public void SetColor(bool white)
         {
             if (white) m_Pc = new WhitePiececontroller(m_Build);
@@ -636,6 +654,7 @@ namespace Checkers
             set
             {
                 m_Build.Field = value;
+
                 if (m_Righties == null)
                     m_Righties = new List<Pos>();
                 else
@@ -645,6 +664,17 @@ namespace Checkers
                     m_Lefties = new List<Pos>();
                 else
                     m_Lefties.Clear();
+
+                if (m_Kings == null)
+                    m_Kings = new List<Pos>();
+                else
+                    m_Kings.Clear();
+
+                if (m_Kingdirns == null)
+                    m_Kingdirns = new List<Direction>();
+                else
+                    m_Kingdirns.Clear();
+
                 bool jumpers;
                 UpdateMembers(out jumpers);
                 m_Move = (jumpers) ? MoveType.Jump : MoveType.Move;
@@ -675,28 +705,55 @@ namespace Checkers
             bool jump = false;
             foreach (Pos p in allPositions)
             {
-                if (m_Pc.CanJumpRight(p))
+                if ((m_Build.GetAt(p) & Piece.King) == Piece.King)
                 {
-                    if (!jump)
+                    Direction where = m_Pc.CanJumpKing(p);
+                    if (where != Direction.None)
                     {
-                        m_Righties.Clear();
-                        jump = true;
+                        if (!jump)
+                        {
+                            m_Kings.Clear();
+                            m_Kingdirns.Clear();
+                            jump = true;
+                        }
+                        m_Kings.Add(p);
+                        m_Kingdirns.Add(where);
                     }
-                    m_Righties.Add(p);
-                }
-                if (m_Pc.CanJumpLeft(p))
-                {
-                    if (!jump)
+                    else
                     {
-                        m_Lefties.Clear();
-                        jump = true;
+                        where = m_Pc.CanMoveKing(p);
+                        if (where != Direction.None)
+                        {
+                            m_Kings.Add(p);
+                            m_Kingdirns.Add(where);
+                        }
                     }
-                    m_Lefties.Add(p);
                 }
-                else if (!jump)
+                else
                 {
-                    if (m_Pc.CanMoveRight(p)) m_Righties.Add(p);
-                    if (m_Pc.CanMoveLeft(p)) m_Lefties.Add(p);
+                    if (m_Pc.CanJumpRight(p))
+                    {
+                        if (!jump)
+                        {
+                            m_Righties.Clear();
+                            jump = true;
+                        }
+                        m_Righties.Add(p);
+                    }
+                    if (m_Pc.CanJumpLeft(p))
+                    {
+                        if (!jump)
+                        {
+                            m_Lefties.Clear();
+                            jump = true;
+                        }
+                        m_Lefties.Add(p);
+                    }
+                    else if (!jump)
+                    {
+                        if (m_Pc.CanMoveRight(p)) m_Righties.Add(p);
+                        if (m_Pc.CanMoveLeft(p)) m_Lefties.Add(p);
+                    }
                 }
             }
             jumpers = jump;
@@ -705,6 +762,8 @@ namespace Checkers
         Piececontroller m_Pc;
         List<Pos> m_Righties;   // to move or jump to the right
         List<Pos> m_Lefties;    // to move or jump to the left
+        List<Pos> m_Kings;      // Kings that can move or jump
+        List<Direction> m_Kingdirns;    // where the kings can go
         BoardBuilder m_Build;
     }
 }
