@@ -326,7 +326,7 @@ namespace Draughts
 	class RightMove :public IOperation, protected MoveTool
 	{
 	public:
-		RightMove(IField* pf) :MoveTool(pf)
+		RightMove(IField* pf = nullptr) :MoveTool(pf)
 		{ }
 		void WhitePiece(Piece* p)
 		{
@@ -375,7 +375,7 @@ namespace Draughts
 	class LeftMove :public IOperation, protected MoveTool
 	{
 	public:
-		LeftMove(IField* pf) :MoveTool(pf)
+		LeftMove(IField* pf = nullptr) :MoveTool(pf)
 		{ }
 		void WhitePiece(Piece* p)
 		{
@@ -426,7 +426,7 @@ namespace Draughts
 	class RightJump :public IOperation, protected JumpTool
 	{
 	public:
-		RightJump(IField* pf) :JumpTool(pf)
+		RightJump(IField* pf = nullptr) :JumpTool(pf)
 		{ }
 		void WhitePiece(Piece* p)
 		{
@@ -493,7 +493,7 @@ namespace Draughts
 	class LeftJump :public IOperation, protected JumpTool
 	{
 	public:
-		LeftJump(IField* pf) :JumpTool(pf)
+		LeftJump(IField* pf = nullptr) :JumpTool(pf)
 		{ }
 		void WhitePiece(Piece* p)
 		{

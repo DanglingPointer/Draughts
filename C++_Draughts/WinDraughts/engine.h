@@ -66,7 +66,7 @@ namespace Draughts
 	class MoviesFinder :public IStateFinder
 	{
 	public:
-		MoviesFinder(IField* pnode, std::set<IField*>& resvec, color turn) :IStateFinder(pnode, resvec, turn)
+		MoviesFinder(IField* pnode, std::set<IField*>& resvec, color turn) :IStateFinder(pnode, resvec, turn), m_pop(nullptr)
 		{
 			m_rmovies = m_mf.RMovies();
 			m_lmovies = m_mf.LMovies();
@@ -77,14 +77,19 @@ namespace Draughts
 		}
 		std::set<IField*>* FindStates()
 		{
+			m_pop = new RMove;
 			for (std::set<Piece*>::const_iterator it = m_rmovies.begin(); it != m_rmovies.end(); ++it)
 			{
-				Iter_func<RMove>(*it, m_pboard);
+				Iter_func(*it);
 			}
+			delete m_pop;
+			m_pop = new LMove;
 			for (std::set<Piece*>::const_iterator it = m_lmovies.begin(); it != m_lmovies.end(); ++it)
 			{
-				Iter_func<LMove>(*it, m_pboard);
+				Iter_func(*it);
 			}
+			delete m_pop;
+			m_pop = nullptr;
 			return m_pvec;
 		}
 		void Clear()
@@ -93,23 +98,25 @@ namespace Draughts
 			m_lmovies.clear();
 		}
 	private:
+		IOperation *m_pop;
 		pset m_rmovies;
 		pset m_lmovies;
-		template <class Visitor> void Iter_func(Piece* piece, IField* pb)
+		void Iter_func(Piece* piece)
 		{
 			if (piece->King()) 
 			{
 				DirectionOf(piece) = UP;
-				OneDirn_move<Visitor>(piece, pb);
+				OneDirn_move(piece);
 				DirectionOf(piece) = DOWN;
 			}
-			OneDirn_move<Visitor>(piece, pb);
+			OneDirn_move(piece);
 		}
-		template <class Visitor> void OneDirn_move(Piece* piece, IField* pb)
+		void OneDirn_move(Piece* piece)
 		{
-			IField* pnewboard = new Board(pb);
-			Piece *p = pnewboard->at(pb->Lpos_of(piece), pb->Npos_of(piece));
-			p->Accept(Visitor(pnewboard));
+			IField* pnewboard = new Board(m_pboard);
+			Piece *p = pnewboard->at(m_pboard->Lpos_of(piece), m_pboard->Npos_of(piece));
+			m_pop->set_Board(pnewboard);
+			p->Accept(*m_pop);
 			m_pvec->insert(pnewboard);
 		}
 	};
@@ -240,7 +247,7 @@ namespace Draughts
 			m_side_set = true;
 			m_AIside = AIside;
 			m_pbt = new BoardTool(m_AIside);
-			m_pAB = new AlphaBeta<BoardTool>(m_pbt, false);
+			m_pAB = new AlphaBeta<BoardTool>(m_pbt/*, false*/);
 		}
 		void Reset()
 		{
@@ -275,7 +282,7 @@ namespace Draughts
 		{
 			if (!m_side_set)
 				return false;
-			IField* pnewstate = m_pAB->NextState(m_pboard, 5);
+			IField* pnewstate = m_pAB->NextState(m_pboard, 0);
 			delete m_pboard;
 			m_pboard = pnewstate;
 			return true;
