@@ -65,6 +65,9 @@ namespace Checkers
             m_BlackPos = new List<Pos>();
             m_Log = new Stack<Operation>();
         }
+        /// <summary>
+        /// Current board to be processed. When setting updates all members.
+        /// </summary>
         public Piece[] Field
         {
             get { return m_Data; }
@@ -86,49 +89,82 @@ namespace Checkers
             }
         }
         //------------------------------------------------------
-        // Rows enumeration: Bottom -> Top
-        // Columns enumeration: Left -> Right
+        /// <summary>
+        /// Rows: Bottom -> Top.
+        /// Columns: Left -> Right.
+        /// Returns type of piece at the given position.
+        /// </summary>
         public Piece GetAt(Pos pos)
         {
             return m_Data[Constants.BoardSize * pos.Row + pos.Col];
         }
+        /// <summary>
+        /// Rows: Bottom -> Top.
+        /// Columns: Left -> Right.
+        /// Returns type of piece at the given position.
+        /// </summary>
         public Piece GetAt(ushort row, ushort col)
         {
             return GetAt(new Pos(row, col));
         }
+        /// <summary>
+        /// Rows: Bottom -> Top.
+        /// Columns: Left -> Right.
+        /// Returns type of piece at the given position.
+        /// </summary>
         public Piece GetAt(int row, int col)
         {
             ushort urow = Convert.ToUInt16(row);
             ushort ucol = Convert.ToUInt16(col);
             return GetAt(new Pos(urow, ucol));
         }
+        /// <summary>
+        /// Returns a copy of the current board (or null).
+        /// </summary>
         public Piece[] Copy
         {
             get
             {
+                if (m_Data == null)
+                    return null;
                 int length = m_Data.Length;
                 Piece[] copy = new Piece[length];
                 Array.Copy(m_Data, copy, length);
                 return copy;
             }
         }
+        /// <summary>
+        /// Returns copy of positions of all white pieces
+        /// </summary>
         public Pos[] WhitePositions
         {
             get { return m_WhitePos.ToArray(); }
         }
+        /// <summary>
+        /// Returns copy of positions of all black pieces
+        /// </summary>
         public Pos[] BlackPositions
         {
             get { return m_BlackPos.ToArray(); }
         }
+        /// <summary>
+        /// Number of operations since last reset.
+        /// </summary>
         public int Counter
         {
             get { return m_Log.Count; }
         }
         //------------------------------------------------------
+        /// <summary>
+        /// Erases memory of all operations since last call.
+        /// </summary>
         public void ResetCounter()
         {
             m_Log.Clear();
         }
+        /// <summary>
+        /// Clears and initializes board.
+        /// </summary>
         public void Initialize()
         {
             for (int i = 0; i < m_Data.Length; ++i)
@@ -158,20 +194,38 @@ namespace Checkers
                 }
             }
         }
+        /// <summary>
+        /// Rows: Bottom -> Top.
+        /// Columns: Left -> Right.
+        /// Sets type of piece at the given position.
+        /// </summary>
         public void SetAt(Pos pos, Piece p)
         {
             Replace(pos, p, true);
         }
+        /// <summary>
+        /// Rows: Bottom -> Top.
+        /// Columns: Left -> Right.
+        /// Sets type of piece at the given position.
+        /// </summary>
         public void SetAt(ushort row, ushort col, Piece p)
         {
             Replace(new Pos(row, col), p, true);
         }
+        /// <summary>
+        /// Rows: Bottom -> Top.
+        /// Columns: Left -> Right.
+        /// Sets type of piece at the given position.
+        /// </summary>
         public void SetAt(int row, int col, Piece p)
         {
             ushort urow = Convert.ToUInt16(row);
             ushort ucol = Convert.ToUInt16(col);
             Replace(new Pos(urow, ucol), p, true);
         }
+        /// <summary>
+        /// One operation by default.
+        /// </summary>
         public bool Undo(ushort steps = 1)
         {
             for (ushort n = steps; n > 0; --n)
@@ -183,6 +237,9 @@ namespace Checkers
             }
             return true;
         }
+        /// <summary>
+        /// Go back to the state just after the last ResetCounter().
+        /// </summary>
         public void ResetState()
         {
             int i = m_Log.Count;
@@ -249,7 +306,7 @@ namespace Checkers
     public interface Piececontroller
     {
         /// <summary>
-        /// Doesn't set if null
+        /// Never creates a BoardBuilder. Doesn't set if null.
         /// </summary>
         BoardBuilder Builder { get; set; }
         /// <summary>
@@ -303,7 +360,7 @@ namespace Checkers
         /// <summary>
         /// Moves only if 'dirn' is a valid direction
         /// </summary>
-        void KingMove(Direction dirn, Pos pos);
+        void MoveKing(Direction dirn, Pos pos);
     }
     //===============================================================================
     internal class WhitePiececontroller : Piececontroller
@@ -541,7 +598,7 @@ namespace Checkers
             }
             return where;
         }
-        public void KingMove(Direction dirn, Pos pos)
+        public void MoveKing(Direction dirn, Pos pos)
         {
             if (dirn == Direction.None)
                 return;
@@ -680,9 +737,111 @@ namespace Checkers
                 m_Move = (jumpers) ? MoveType.Jump : MoveType.Move;
             }
         }
-        public List<Piece[]> Childs // TODO
+        public bool Jumping
         {
-            get { return new List<Piece[]>(); }
+            get { return m_Move == MoveType.Jump; }
+        }
+        public bool Moving
+        {
+            get { return m_Move == MoveType.Move; }
+        }
+        public List<Piece[]> Childs
+        {
+            get
+            {
+                if (m_Move == MoveType.Unset)
+                    throw new InvalidOperationException();
+
+                var childs = new List<Piece[]>();
+                foreach(Pos p in m_Righties)
+                {
+                    m_Build.ResetCounter();
+                    if (m_Move == MoveType.Jump)
+                        m_Pc.JumpRight(p);
+                    else
+                        m_Pc.MoveRight(p);
+                    childs.Add(m_Build.Copy);
+                    m_Build.ResetState();
+                }
+                foreach(Pos p in m_Lefties)
+                {
+                    m_Build.ResetCounter();
+                    if (m_Move == MoveType.Jump)
+                        m_Pc.JumpLeft(p);
+                    else
+                        m_Pc.MoveLeft(p);
+                    childs.Add(m_Build.Copy);
+                    m_Build.ResetState();
+                }
+                for (int i = 0; i < m_Kings.Count; ++i)
+                {
+                    Direction dirn = m_Kingdirns[i];
+                    Pos p = m_Kings[i];
+                    if (m_Move == MoveType.Jump)
+                    {
+                        if ((dirn & Direction.LeftDown) == Direction.LeftDown)
+                        {
+                            m_Build.ResetCounter();
+                            m_Pc.JumpKing(Direction.LeftDown, p);
+                            childs.Add(m_Build.Copy);
+                            m_Build.ResetState();
+                        }
+                        if ((dirn & Direction.LeftUp) == Direction.LeftUp)
+                        {
+                            m_Build.ResetCounter();
+                            m_Pc.JumpKing(Direction.LeftUp, p);
+                            childs.Add(m_Build.Copy);
+                            m_Build.ResetState();
+                        }
+                        if ((dirn & Direction.RightDown) == Direction.RightDown)
+                        {
+                            m_Build.ResetCounter();
+                            m_Pc.JumpKing(Direction.RightDown, p);
+                            childs.Add(m_Build.Copy);
+                            m_Build.ResetState();
+                        }
+                        if ((dirn & Direction.RightUp) == Direction.RightUp)
+                        {
+                            m_Build.ResetCounter();
+                            m_Pc.JumpKing(Direction.RightUp, p);
+                            childs.Add(m_Build.Copy);
+                            m_Build.ResetState();
+                        }
+                    }
+                    else // if (m_Move == MoveType.Move)
+                    {
+                        if ((dirn & Direction.LeftDown) == Direction.LeftDown)
+                        {
+                            m_Build.ResetCounter();
+                            m_Pc.MoveKing(Direction.LeftDown, p);
+                            childs.Add(m_Build.Copy);
+                            m_Build.ResetState();
+                        }
+                        if ((dirn & Direction.LeftUp) == Direction.LeftUp)
+                        {
+                            m_Build.ResetCounter();
+                            m_Pc.MoveKing(Direction.LeftUp, p);
+                            childs.Add(m_Build.Copy);
+                            m_Build.ResetState();
+                        }
+                        if ((dirn & Direction.RightDown) == Direction.RightDown)
+                        {
+                            m_Build.ResetCounter();
+                            m_Pc.MoveKing(Direction.RightDown, p);
+                            childs.Add(m_Build.Copy);
+                            m_Build.ResetState();
+                        }
+                        if ((dirn & Direction.RightUp) == Direction.RightUp)
+                        {
+                            m_Build.ResetCounter();
+                            m_Pc.MoveKing(Direction.RightUp, p);
+                            childs.Add(m_Build.Copy);
+                            m_Build.ResetState();
+                        }
+                    }
+                }
+                return childs;
+            }
         }
         public double HeuristicValue
         {
