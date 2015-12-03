@@ -719,17 +719,13 @@ namespace Checkers
                         m_Kings.Add(p);
                         m_Kingdirns.Add(where);
                     }
-                    else
+                    else if (!jump && (where = m_Pc.CanMoveKing(p)) != Direction.None) 
                     {
-                        where = m_Pc.CanMoveKing(p);
-                        if (where != Direction.None)
-                        {
-                            m_Kings.Add(p);
-                            m_Kingdirns.Add(where);
-                        }
+                        m_Kings.Add(p);
+                        m_Kingdirns.Add(where);
                     }
                 }
-                else
+                else // not a king
                 {
                     if (m_Pc.CanJumpRight(p))
                     {
