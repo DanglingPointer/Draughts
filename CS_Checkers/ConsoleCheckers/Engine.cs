@@ -195,6 +195,33 @@ namespace Checkers
             }
         }
         /// <summary>
+        /// Creates new board and inializes it.
+        /// </summary>
+        public static void Initialize(out Piece[] board)
+        {
+            board = new Piece[Constants.BoardSize * Constants.BoardSize];
+            for (ushort row = 0; row < Constants.BoardSize / 2 - 1; ++row)
+            {   // Placing white pieces
+                ushort col = 0;
+                if (row % 2 == 0) col = 1;
+                while (col < Constants.BoardSize)
+                {
+                    board[Constants.BoardSize * row + col] = Piece.White;
+                    col += 2;
+                }
+            }
+            for (ushort row = Constants.BoardSize - 1; row > Constants.BoardSize / 2; ++row)
+            {   // Placing black pieces
+                ushort col = 0;
+                if (row % 2 == 0) col = 1;
+                while (col < Constants.BoardSize)
+                {
+                    board[Constants.BoardSize * row + col] = Piece.Black;
+                    col += 2;
+                }
+            }
+        }
+        /// <summary>
         /// Rows: Bottom -> Top.
         /// Columns: Left -> Right.
         /// Sets type of piece at the given position.
@@ -310,10 +337,6 @@ namespace Checkers
         /// </summary>
         BoardBuilder Builder { get; set; }
         /// <summary>
-        /// Returns value from 0.0 (loss) to 1.0 (win), 0.5 is a draw
-        /// </summary>
-        double EvaluateBoard();
-        /// <summary>
         /// Doesn't check what's at 'pos'
         /// </summary>
         bool CanJumpRight(Pos pos);
@@ -373,12 +396,6 @@ namespace Checkers
         {
             get { return m_Builder; }
             set { if (value != null) m_Builder = value; }
-        }
-        public double EvaluateBoard()
-        {
-            int numWhite = m_Builder.WhitePositions.Length;
-            int numBlack = m_Builder.BlackPositions.Length;
-            return (double)numWhite / (numWhite + numBlack);
         }
         // Doesn't check 'pos'
         public bool CanJumpRight(Pos pos)
@@ -483,32 +500,27 @@ namespace Checkers
         }
         public void JumpKing(Direction dirn, Pos pos)
         {
-            Direction nothere = Direction.None;
             Pos newpos;
             Piece mypiece = m_Builder.GetAt(pos);
             m_Builder.SetAt(pos, Piece.Empty);
 
             if (dirn == Direction.RightUp)
             {
-                nothere = Direction.LeftDown;
                 m_Builder.SetAt(pos.Row + 1, pos.Col + 1, Piece.Empty);
                 newpos = new Pos(pos.Row + 2, pos.Col + 2);
             }
             else if (dirn == Direction.LeftUp)
             {
-                nothere = Direction.RightDown;
                 m_Builder.SetAt(pos.Row + 1, pos.Col - 1, Piece.Empty);
                 newpos = new Pos(pos.Row + 2, pos.Col - 2);
             }
             else if (dirn == Direction.RightDown)
             {
-                nothere = Direction.LeftUp;
                 m_Builder.SetAt(pos.Row - 1, pos.Col + 1, Piece.Empty);
                 newpos = new Pos(pos.Row - 2, pos.Col + 2);
             }
             else if (dirn == Direction.LeftDown)
             {
-                nothere = Direction.RightUp;
                 m_Builder.SetAt(pos.Row - 1, pos.Col - 1, Piece.Empty);
                 newpos = new Pos(pos.Row - 2, pos.Col - 2);
             }
@@ -518,15 +530,15 @@ namespace Checkers
 
 
             int rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
-            Direction newdirn = CanJumpKing(pos);
-            if (nothere != Direction.RightUp && (newdirn & Direction.RightUp) == Direction.RightUp)
-                rightUp = MaxJumpKing(new Pos(pos.Row + 2, pos.Col + 2), Direction.LeftDown) + 1;
-            if (nothere != Direction.LeftUp && (newdirn & Direction.LeftUp) == Direction.LeftUp)
-                leftUp = MaxJumpKing(new Pos(pos.Row + 2, pos.Col - 2), Direction.RightDown) + 1;
-            if (nothere != Direction.RightDown && (newdirn & Direction.RightDown) == Direction.RightDown)
-                rightDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col + 2), Direction.LeftUp) + 1;
-            if (nothere != Direction.LeftDown && (newdirn & Direction.LeftDown) == Direction.LeftDown)
-                leftDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col - 2), Direction.RightUp) + 1;
+            Direction newdirn = CanJumpKing(newpos);
+            if ((newdirn & Direction.RightUp) == Direction.RightUp)
+                rightUp = MaxJumpKing(new Pos(newpos.Row + 2, newpos.Col + 2), Direction.LeftDown) + 1;
+            if ((newdirn & Direction.LeftUp) == Direction.LeftUp)
+                leftUp = MaxJumpKing(new Pos(newpos.Row + 2, newpos.Col - 2), Direction.RightDown) + 1;
+            if ((newdirn & Direction.RightDown) == Direction.RightDown)
+                rightDown = MaxJumpKing(new Pos(newpos.Row - 2, newpos.Col + 2), Direction.LeftUp) + 1;
+            if ((newdirn & Direction.LeftDown) == Direction.LeftDown)
+                leftDown = MaxJumpKing(new Pos(newpos.Row - 2, newpos.Col - 2), Direction.RightUp) + 1;
 
             if (rightDown != 0 || rightUp != 0 || leftDown != 0 || leftUp != 0)
             {
@@ -656,13 +668,7 @@ namespace Checkers
             get { return m_Builder; }
             set { if (value != null) m_Builder = value; }
         }
-        public double EvaluateBoard()
-        {
-            int numWhite = m_Builder.WhitePositions.Length;
-            int numBlack = m_Builder.BlackPositions.Length;
-            return (double)numBlack / (numWhite + numBlack);
-        }
-        // Doesn't check if pos is White
+        // Doesn't check if pos is Black
         public bool CanJumpRight(Pos pos)
         {
             if (pos.Col > Constants.BoardSize - 3 || pos.Row < 2)
@@ -765,32 +771,27 @@ namespace Checkers
         }
         public void JumpKing(Direction dirn, Pos pos)   // Same as for White
         {
-            Direction nothere = Direction.None;
             Pos newpos;
             Piece mypiece = m_Builder.GetAt(pos);
             m_Builder.SetAt(pos, Piece.Empty);
 
             if (dirn == Direction.RightUp)
             {
-                nothere = Direction.LeftDown;
                 m_Builder.SetAt(pos.Row + 1, pos.Col + 1, Piece.Empty);
                 newpos = new Pos(pos.Row + 2, pos.Col + 2);
             }
             else if (dirn == Direction.LeftUp)
             {
-                nothere = Direction.RightDown;
                 m_Builder.SetAt(pos.Row + 1, pos.Col - 1, Piece.Empty);
                 newpos = new Pos(pos.Row + 2, pos.Col - 2);
             }
             else if (dirn == Direction.RightDown)
             {
-                nothere = Direction.LeftUp;
                 m_Builder.SetAt(pos.Row - 1, pos.Col + 1, Piece.Empty);
                 newpos = new Pos(pos.Row - 2, pos.Col + 2);
             }
             else if (dirn == Direction.LeftDown)
             {
-                nothere = Direction.RightUp;
                 m_Builder.SetAt(pos.Row - 1, pos.Col - 1, Piece.Empty);
                 newpos = new Pos(pos.Row - 2, pos.Col - 2);
             }
@@ -800,15 +801,15 @@ namespace Checkers
 
 
             int rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
-            Direction newdirn = CanJumpKing(pos);
-            if (nothere != Direction.RightUp && (newdirn & Direction.RightUp) == Direction.RightUp)
-                rightUp = MaxJumpKing(new Pos(pos.Row + 2, pos.Col + 2), Direction.LeftDown) + 1;
-            if (nothere != Direction.LeftUp && (newdirn & Direction.LeftUp) == Direction.LeftUp)
-                leftUp = MaxJumpKing(new Pos(pos.Row + 2, pos.Col - 2), Direction.RightDown) + 1;
-            if (nothere != Direction.RightDown && (newdirn & Direction.RightDown) == Direction.RightDown)
-                rightDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col + 2), Direction.LeftUp) + 1;
-            if (nothere != Direction.LeftDown && (newdirn & Direction.LeftDown) == Direction.LeftDown)
-                leftDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col - 2), Direction.RightUp) + 1;
+            Direction newdirn = CanJumpKing(newpos);
+            if ((newdirn & Direction.RightUp) == Direction.RightUp)
+                rightUp = MaxJumpKing(new Pos(newpos.Row + 2, newpos.Col + 2), Direction.LeftDown) + 1;
+            if ((newdirn & Direction.LeftUp) == Direction.LeftUp)
+                leftUp = MaxJumpKing(new Pos(newpos.Row + 2, newpos.Col - 2), Direction.RightDown) + 1;
+            if ((newdirn & Direction.RightDown) == Direction.RightDown)
+                rightDown = MaxJumpKing(new Pos(newpos.Row - 2, newpos.Col + 2), Direction.LeftUp) + 1;
+            if ((newdirn & Direction.LeftDown) == Direction.LeftDown)
+                leftDown = MaxJumpKing(new Pos(newpos.Row - 2, newpos.Col - 2), Direction.RightUp) + 1;
 
             if (rightDown != 0 || rightUp != 0 || leftDown != 0 || leftUp != 0)
             {
@@ -1094,9 +1095,17 @@ namespace Checkers
                 return childs;
             }
         }
-        public double HeuristicValue
+        /// <summary>
+        /// Returns value from 0.0 (loss) to 1.0 (win), 0.5 is a draw
+        /// </summary>
+        public double HeuristicValue(bool white_is_max_side)
         {
-            get { return m_Pc.EvaluateBoard(); }
+            int numWhite = m_Build.WhitePositions.Length;
+            int numBlack = m_Build.BlackPositions.Length;
+            int numerator = (white_is_max_side) ? numWhite : numBlack;
+            if (numWhite == 0 && numBlack == 0)
+                return 0.5;                
+            return (double)numerator / (numWhite + numBlack);
         }
         /// <summary>
         /// Either only jumpers ('true') or only movers ('false').
@@ -1171,5 +1180,20 @@ namespace Checkers
         List<Pos> m_Kings;      // Kings that can move or jump
         List<Direction> m_Kingdirns;    // where the kings can go
         BoardBuilder m_Build;
+    }
+    /// <summary>
+    /// 
+    /// </summary>
+    public class Gameplay
+    {
+        public Gameplay(bool AI_is_white)
+        {
+            m_WhiteAI = AI_is_white;
+            m_Cg = new ChildGetter();
+            BoardBuilder.Initialize(out m_Board);
+        }
+        bool m_WhiteAI;
+        ChildGetter m_Cg;
+        Piece[] m_Board;
     }
 }
