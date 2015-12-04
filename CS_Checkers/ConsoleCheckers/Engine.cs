@@ -21,6 +21,16 @@ namespace Checkers
             }
             return max;
         }
+        public static T Min<T>(params T[] args) where T : IComparable<T>
+        {
+            T min = args[0];
+            foreach (T arg in args)
+            {
+                if (arg.CompareTo(min) < 0)
+                    min = arg;
+            }
+            return min;
+        }
     }
     [Flags]
     public enum Piece : byte
@@ -957,6 +967,9 @@ namespace Checkers
             if (white) m_Pc = new WhitePiececontroller(m_Build);
             else m_Pc = new BlackPiececontroller(m_Build);
         }
+        /// <summary>
+        /// Updates all internal states except color
+        /// </summary>
         public Piece[] CurrentState
         {
             get { return m_Build.Field; }
@@ -988,14 +1001,6 @@ namespace Checkers
                 UpdateMembers(out jumpers);
                 m_Move = (jumpers) ? MoveType.Jump : MoveType.Move;
             }
-        }
-        public bool Jumping
-        {
-            get { return m_Move == MoveType.Jump; }
-        }
-        public bool Moving
-        {
-            get { return m_Move == MoveType.Move; }
         }
         /// <summary>
         /// All members must be initialized and configured (by CurrentState and SetColor()).
@@ -1107,6 +1112,22 @@ namespace Checkers
                 return 0.5;                
             return (double)numerator / (numWhite + numBlack);
         }
+        public bool Jumping
+        {
+            get { return m_Move == MoveType.Jump; }
+        }
+        public bool Moving
+        {
+            get { return m_Move == MoveType.Move; }
+        }
+        public BoardBuilder Builder
+        {
+            get { return m_Build; }
+        }
+        public IPiececontroller Controller
+        {
+            get { return m_Pc; }
+        }
         /// <summary>
         /// Either only jumpers ('true') or only movers ('false').
         /// Doesn't clear the lists
@@ -1186,12 +1207,121 @@ namespace Checkers
     /// </summary>
     public class Gameplay
     {
-        public Gameplay(bool AI_is_white)
+        public Gameplay(bool AI_is_white, int depth = -1)
         {
+            m_Depth = depth;
             m_WhiteAI = AI_is_white;
             m_Cg = new ChildGetter();
             BoardBuilder.Initialize(out m_Board);
         }
+        /// <summary>
+        /// Current game state.
+        /// </summary>
+        public Piece[] Board
+        {
+            get { return m_Board; }
+        }
+        /// <summary>
+        /// Updates board if possible, otherwise returns false.
+        /// </summary>
+        public bool AITurn()
+        {
+            m_Cg.SetColor((m_WhiteAI) ? true : false);
+            m_Cg.CurrentState = m_Board;
+
+            var children = m_Cg.Childs;
+            if (children.Count == 0)
+                return false;
+
+            var childValues = new List<double>();
+            int bestChildInd = 0;
+            for (int i = 0; i < children.Count; ++i)
+            {
+                childValues[i] = AlphaBetaPruning(children[i], m_Depth);
+                if (childValues[bestChildInd] < childValues[i])
+                    bestChildInd = i;
+            }
+            m_Board = children[bestChildInd];
+            return true;
+        }
+        public bool PlayerTurn(Pos pos, Direction dirn)
+        {
+            m_Cg.SetColor((m_WhiteAI) ? false : true);
+            m_Cg.CurrentState = m_Board;
+            
+            if ((m_Cg.Builder.GetAt(pos) & Piece.King) == Piece.King)
+            {
+                Direction whereCanGo = (m_Cg.Moving) ? m_Cg.Controller.CanMoveKing(pos) : m_Cg.Controller.CanJumpKing(pos);
+                if ((whereCanGo & dirn) == dirn)
+                {
+                    if (m_Cg.Moving) m_Cg.Controller.MoveKing((whereCanGo & dirn), pos);
+                    else m_Cg.Controller.JumpKing((whereCanGo & dirn), pos);
+                }
+                else
+                    return false;
+            }
+            else // not a king
+            {
+                if (m_Cg.Jumping)
+                {
+                    if ((dirn & (Direction.RightUp | Direction.RightDown)) == dirn && m_Cg.Controller.CanJumpRight(pos))
+                        m_Cg.Controller.JumpRight(pos);
+                    else if ((dirn & (Direction.LeftUp | Direction.LeftDown)) == dirn && m_Cg.Controller.CanJumpLeft(pos))
+                        m_Cg.Controller.JumpLeft(pos);
+                    else
+                        return false;
+                }
+                else // moving
+                {
+                    if ((dirn & (Direction.RightUp | Direction.RightDown)) == dirn && m_Cg.Controller.CanMoveRight(pos))
+                        m_Cg.Controller.MoveRight(pos);
+                    else if ((dirn & (Direction.LeftUp | Direction.LeftDown)) == dirn && m_Cg.Controller.CanMoveLeft(pos))
+                        m_Cg.Controller.MoveLeft(pos);
+                    else
+                        return false;
+                }
+            }
+            return true;
+        }
+        private double AlphaBetaPruning(Piece[] node, int depth, double alpha = 0.0, double beta = 1.0, bool aiturn = false)
+        {
+            if (m_WhiteAI)
+                m_Cg.SetColor((aiturn) ? true : false);
+            else
+                m_Cg.SetColor((aiturn) ? false : true);
+            m_Cg.CurrentState = node;
+
+            double hval = m_Cg.HeuristicValue(m_WhiteAI);
+            if ((m_Depth != -1 && depth == 0) || hval == 0.0 || hval == 1.0)
+                return hval;
+
+            List<Piece[]> children = m_Cg.Childs;
+            double val;
+            if (aiturn)
+            {
+                val = 0.0;
+                foreach(Piece[] child in children)
+                {
+                    val = Constants.Max(val, AlphaBetaPruning(child, depth - 1, alpha, beta, false));
+                    alpha = Constants.Max(alpha, val);
+                    if (beta <= alpha)
+                        break;
+                }
+            }
+            else
+            {
+                val = 1.0;
+                foreach(Piece[] child in children)
+                {
+                    val = Constants.Min(val, AlphaBetaPruning(child, depth - 1, alpha, beta, true));
+                    beta = Constants.Min(beta, val);
+                    if (beta <= alpha)
+                        break;
+                }
+            }
+            return val;
+        }
+        int m_Depth;
         bool m_WhiteAI;
         ChildGetter m_Cg;
         Piece[] m_Board;
