@@ -10,27 +10,10 @@ namespace Checkers
     //===============================================================================
     public static class Constants
     {
-        public const ushort BoardSize = 8;
-        public static T Max<T>(params T[] args) where T :IComparable<T>
-        {
-            T max = args[0];
-            foreach(T arg in args)
-            {
-                if (arg.CompareTo(max) > 0)
-                    max = arg;
-            }
-            return max;
-        }
-        public static T Min<T>(params T[] args) where T : IComparable<T>
-        {
-            T min = args[0];
-            foreach (T arg in args)
-            {
-                if (arg.CompareTo(min) < 0)
-                    min = arg;
-            }
-            return min;
-        }
+        /// <summary>
+        /// Size of the board's side
+        /// </summary>
+        public static int BoardSize = 8;
     }
     [Flags]
     public enum Piece : byte
@@ -39,6 +22,15 @@ namespace Checkers
         White = 0x1,
         Black = 0x2,
         King  = 0x4
+    }
+    [Flags]
+    public enum Direction : byte
+    {
+        None = 0,
+        RightUp = 1,
+        LeftUp = 2,
+        RightDown = 4,
+        LeftDown = 8
     }
     public struct Pos
     {
@@ -62,11 +54,35 @@ namespace Checkers
         ushort m_Col;
     }
     //===============================================================================
+    internal static class Aux
+    {
+        public static T Max<T>(params T[] args) where T : IComparable<T>
+        {
+            T max = args[0];
+            foreach (T arg in args)
+            {
+                if (arg.CompareTo(max) > 0)
+                    max = arg;
+            }
+            return max;
+        }
+        public static T Min<T>(params T[] args) where T : IComparable<T>
+        {
+            T min = args[0];
+            foreach (T arg in args)
+            {
+                if (arg.CompareTo(min) < 0)
+                    min = arg;
+            }
+            return min;
+        }
+    }
+    //===============================================================================
     /// <summary>
     /// Wrapper around byte-field Piece[]. Performs elementary operations on pieces.
     /// </summary>
     //===============================================================================
-    public class BoardBuilder
+    internal class BoardBuilder
     {
         public BoardBuilder()
         {
@@ -192,7 +208,7 @@ namespace Checkers
                     col += 2;
                 }
             }
-            for (ushort row = Constants.BoardSize-1; row > Constants.BoardSize / 2; ++row)
+            for (ushort row = (ushort)(Constants.BoardSize-1); row > Constants.BoardSize / 2; ++row)
             {   // Placing black pieces
                 ushort col = 0;
                 if (row % 2 == 0) col = 1;
@@ -220,7 +236,7 @@ namespace Checkers
                     col += 2;
                 }
             }
-            for (ushort row = Constants.BoardSize - 1; row > Constants.BoardSize / 2; ++row)
+            for (ushort row = (ushort)(Constants.BoardSize - 1); row > Constants.BoardSize / 2; ++row)
             {   // Placing black pieces
                 ushort col = 0;
                 if (row % 2 == 0) col = 1;
@@ -326,21 +342,11 @@ namespace Checkers
         Stack<Operation> m_Log;
     }
     //===============================================================================
-    [Flags]
-    public enum Direction : byte
-    {
-        None    = 0,
-        RightUp = 1,
-        LeftUp  = 2,
-        RightDown = 4,
-        LeftDown = 8
-    }
-    //===============================================================================
     /// <summary>
     /// Moves right pieces to right positions if possible
     /// </summary>
     //===============================================================================
-    public interface IPiececontroller
+    internal interface IPiececontroller
     {
         /// <summary>
         /// Never creates a BoardBuilder. Doesn't set if null.
@@ -662,7 +668,7 @@ namespace Checkers
                 rightDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col + 2), Direction.LeftUp) + 1;
             if (nothere != Direction.LeftDown && (dirn & Direction.LeftDown) == Direction.LeftDown)
                 leftDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col - 2), Direction.RightUp) + 1;
-            return Constants.Max(rightUp, rightDown, leftUp, leftDown);
+            return Aux.Max(rightUp, rightDown, leftUp, leftDown);
         }
         BoardBuilder m_Builder;
     }
@@ -933,7 +939,7 @@ namespace Checkers
                 rightDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col + 2), Direction.LeftUp) + 1;
             if (nothere != Direction.LeftDown && (dirn & Direction.LeftDown) == Direction.LeftDown)
                 leftDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col - 2), Direction.RightUp) + 1;
-            return Constants.Max(rightUp, rightDown, leftUp, leftDown);
+            return Aux.Max(rightUp, rightDown, leftUp, leftDown);
         }
         BoardBuilder m_Builder;
     }
@@ -943,7 +949,7 @@ namespace Checkers
     /// To be created only once, then takes different fields.
     /// </summary>
     //===============================================================================
-    public class ChildGetter
+    internal class ChildGetter
     {
         private enum MoveType : byte
         {
@@ -1202,9 +1208,11 @@ namespace Checkers
         List<Direction> m_Kingdirns;    // where the kings can go
         BoardBuilder m_Build;
     }
+    //===============================================================================
     /// <summary>
     /// 
     /// </summary>
+    //===============================================================================
     public class Gameplay
     {
         public Gameplay(bool AI_is_white, int depth = -1)
@@ -1302,8 +1310,8 @@ namespace Checkers
                 val = 0.0;
                 foreach(Piece[] child in children)
                 {
-                    val = Constants.Max(val, AlphaBetaPruning(child, depth - 1, alpha, beta, false));
-                    alpha = Constants.Max(alpha, val);
+                    val = Aux.Max(val, AlphaBetaPruning(child, depth - 1, alpha, beta, false));
+                    alpha = Aux.Max(alpha, val);
                     if (beta <= alpha)
                         break;
                 }
@@ -1313,8 +1321,8 @@ namespace Checkers
                 val = 1.0;
                 foreach(Piece[] child in children)
                 {
-                    val = Constants.Min(val, AlphaBetaPruning(child, depth - 1, alpha, beta, true));
-                    beta = Constants.Min(beta, val);
+                    val = Aux.Min(val, AlphaBetaPruning(child, depth - 1, alpha, beta, true));
+                    beta = Aux.Min(beta, val);
                     if (beta <= alpha)
                         break;
                 }
