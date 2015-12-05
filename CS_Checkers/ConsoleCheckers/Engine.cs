@@ -400,6 +400,10 @@ namespace Checkers
         /// Moves only if 'dirn' is a valid direction
         /// </summary>
         void MoveKing(Direction dirn, Pos pos);
+        /// <summary>
+        /// Checks if the piece at 'pos' is valid king or man.
+        /// </summary>
+        bool IsValid(bool king, Pos pos);
     }
     //===============================================================================
     internal class WhitePiececontroller : IPiececontroller
@@ -639,6 +643,17 @@ namespace Checkers
                 m_Builder.SetAt(pos.Row - 1, pos.Col + 1, mypiece);
             else if ((dirn & Direction.LeftDown) == Direction.LeftDown)
                 m_Builder.SetAt(pos.Row - 1, pos.Col - 1, mypiece);
+        }
+        public bool IsValid(bool king, Pos pos)
+        {
+            Piece mypiece = m_Builder.GetAt(pos);
+            if ((mypiece & Piece.White) != Piece.White)
+                return false;
+            if (king && (mypiece & Piece.King) == Piece.King)
+                return true;
+            if (!king && (mypiece & Piece.King) == 0)
+                return true;
+            return false;
         }
         /// <summary>
         /// Returns max number of possible successive jumps from 'pos'
@@ -911,6 +926,17 @@ namespace Checkers
             else if ((dirn & Direction.LeftDown) == Direction.LeftDown)
                 m_Builder.SetAt(pos.Row - 1, pos.Col - 1, mypiece);
         }
+        public bool IsValid(bool king, Pos pos)
+        {
+            Piece mypiece = m_Builder.GetAt(pos);
+            if ((mypiece & Piece.Black) != Piece.Black)
+                return false;
+            if (king && (mypiece & Piece.King) == Piece.King)
+                return true;
+            if (!king && (mypiece & Piece.King) == 0)
+                return true;
+            return false;
+        }
         /// <summary>
         /// Returns max number of possible successive jumps from 'pos'
         /// </summary>
@@ -1003,9 +1029,7 @@ namespace Checkers
                 else
                     m_Kingdirns.Clear();
 
-                bool jumpers;
-                UpdateMembers(out jumpers);
-                m_Move = (jumpers) ? MoveType.Jump : MoveType.Move;
+                UpdateMembers();
             }
         }
         /// <summary>
@@ -1126,10 +1150,6 @@ namespace Checkers
         {
             get { return m_Move == MoveType.Move; }
         }
-        public BoardBuilder Builder
-        {
-            get { return m_Build; }
-        }
         public IPiececontroller Controller
         {
             get { return m_Pc; }
@@ -1138,7 +1158,7 @@ namespace Checkers
         /// Either only jumpers ('true') or only movers ('false').
         /// Doesn't clear the lists
         /// </summary>
-        private void UpdateMembers(out bool jumpers)
+        private void UpdateMembers()
         {
             Pos[] allPositions;
             if (m_Pc is WhitePiececontroller)
@@ -1198,7 +1218,7 @@ namespace Checkers
                     }
                 }
             }
-            jumpers = jump;
+            m_Move = (jump) ? MoveType.Jump : MoveType.Move;
         }
         MoveType m_Move;
         IPiececontroller m_Pc;
@@ -1252,18 +1272,21 @@ namespace Checkers
             m_Board = children[bestChildInd];
             return true;
         }
+        /// <summary>
+        /// Returns 'false' if invalid arguments (impossible to perform the move).
+        /// </summary>
         public bool PlayerTurn(Pos pos, Direction dirn)
         {
             m_Cg.SetColor((m_WhiteAI) ? false : true);
             m_Cg.CurrentState = m_Board;
             
-            if ((m_Cg.Builder.GetAt(pos) & Piece.King) == Piece.King)
+            if (m_Cg.Controller.IsValid(true, pos)) // is a king
             {
                 Direction whereCanGo = (m_Cg.Moving) ? m_Cg.Controller.CanMoveKing(pos) : m_Cg.Controller.CanJumpKing(pos);
                 if ((whereCanGo & dirn) == dirn)
                 {
-                    if (m_Cg.Moving) m_Cg.Controller.MoveKing((whereCanGo & dirn), pos);
-                    else m_Cg.Controller.JumpKing((whereCanGo & dirn), pos);
+                    if (m_Cg.Moving) m_Cg.Controller.MoveKing(dirn, pos);
+                    else m_Cg.Controller.JumpKing(dirn, pos);
                 }
                 else
                     return false;
@@ -1299,12 +1322,11 @@ namespace Checkers
                 m_Cg.SetColor((aiturn) ? false : true);
             m_Cg.CurrentState = node;
 
-            double hval = m_Cg.HeuristicValue(m_WhiteAI);
-            if ((m_Depth != -1 && depth == 0) || hval == 0.0 || hval == 1.0)
-                return hval;
+            double val = m_Cg.HeuristicValue(m_WhiteAI);
+            if ((m_Depth != -1 && depth == 0) || val == 0.0 || val == 1.0)
+                return val;
 
             List<Piece[]> children = m_Cg.Childs;
-            double val;
             if (aiturn)
             {
                 val = 0.0;
