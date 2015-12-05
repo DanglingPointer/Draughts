@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -76,10 +77,39 @@ namespace Checkers
             }
             return min;
         }
+        [Conditional("DEBUG")]
+        public static void Print(Piece[] data)
+        {
+            for (int row = Constants.BoardSize-1; row >= 0; --row)
+            {
+                for (int col = 0; col < Constants.BoardSize; ++col)
+                {
+                    Piece p = data[Constants.BoardSize * row + col];
+                    if ((p & Piece.White) == Piece.White)
+                    {
+                        if ((p & Piece.King) == Piece.King)
+                            Console.Write("E ");
+                        else
+                            Console.Write("e ");
+                    }
+                    else if ((p & Piece.Black) == Piece.Black)
+                    {
+                        if ((p & Piece.King) == Piece.King)
+                            Console.Write("O ");
+                        else
+                            Console.Write("o ");
+                    }
+                    else
+                        Console.Write("- ");
+
+                }
+                Console.WriteLine();
+            }
+        }
     }
     //===============================================================================
     /// <summary>
-    /// Wrapper around byte-field Piece[]. Performs elementary operations on pieces.
+    /// Wrapper for byte-field Piece[]. Performs elementary operations on pieces.
     /// </summary>
     //===============================================================================
     internal class BoardBuilder
@@ -189,10 +219,13 @@ namespace Checkers
             m_Log.Clear();
         }
         /// <summary>
-        /// Clears and initializes board.
+        /// Clears and initializes board, resets counter and updates members.
         /// </summary>
         public void Initialize()
         {
+            m_WhitePos.Clear();
+            m_BlackPos.Clear();
+            m_Log.Clear();
             for (int i = 0; i < m_Data.Length; ++i)
             {
                 m_Data[i] = Piece.Empty;
@@ -208,7 +241,7 @@ namespace Checkers
                     col += 2;
                 }
             }
-            for (ushort row = (ushort)(Constants.BoardSize-1); row > Constants.BoardSize / 2; ++row)
+            for (ushort row = (ushort)(Constants.BoardSize-1); row > Constants.BoardSize / 2; --row)
             {   // Placing black pieces
                 ushort col = 0;
                 if (row % 2 == 0) col = 1;
@@ -236,7 +269,7 @@ namespace Checkers
                     col += 2;
                 }
             }
-            for (ushort row = (ushort)(Constants.BoardSize - 1); row > Constants.BoardSize / 2; ++row)
+            for (ushort row = (ushort)(Constants.BoardSize - 1); row > Constants.BoardSize / 2; --row)
             {   // Placing black pieces
                 ushort col = 0;
                 if (row % 2 == 0) col = 1;
