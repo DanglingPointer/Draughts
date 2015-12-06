@@ -9,12 +9,28 @@ using System.Threading.Tasks;
 namespace Checkers
 {
     //===============================================================================
-    public static class Constants
+    public static class C
     {
         /// <summary>
         /// Size of the board's side
         /// </summary>
         public static int BoardSize = 8;
+        /// <summary>
+        /// Substitution for #define WHITE true
+        /// </summary>
+        public const bool White = true;
+        /// <summary>
+        /// Substitution for #define BLACK false
+        /// </summary>
+        public const bool Black = false;
+        /// <summary>
+        /// Substitution for #define KING true
+        /// </summary>
+        public const bool King = true;
+        /// <summary>
+        /// Substitution for #define MAN false
+        /// </summary>
+        public const bool Man = false;
     }
     [Flags]
     public enum Piece : byte
@@ -37,7 +53,7 @@ namespace Checkers
     {
         public Pos(int row, int col)
         {
-            if (row >= Constants.BoardSize || col >= Constants.BoardSize
+            if (row >= C.BoardSize || col >= C.BoardSize
                 || row < 0 || col < 0) 
                 throw new IndexOutOfRangeException();
             m_Row = Convert.ToUInt16(row);
@@ -81,11 +97,11 @@ namespace Checkers
         public static void Print(Piece[] data)
         {
             Console.WriteLine("----------------");
-            for (int row = Constants.BoardSize-1; row >= 0; --row)
+            for (int row = C.BoardSize-1; row >= 0; --row)
             {
-                for (int col = 0; col < Constants.BoardSize; ++col)
+                for (int col = 0; col < C.BoardSize; ++col)
                 {
-                    Piece p = data[Constants.BoardSize * row + col];
+                    Piece p = data[C.BoardSize * row + col];
                     if ((p & Piece.White) == Piece.White)
                     {
                         if ((p & Piece.King) == Piece.King)
@@ -135,10 +151,10 @@ namespace Checkers
                 m_WhitePos.Clear();
                 m_BlackPos.Clear();
                 m_Log.Clear();
-                for (ushort row = 0; row < Constants.BoardSize; ++row)
-                    for (ushort col = 0; col < Constants.BoardSize; ++col)
+                for (ushort row = 0; row < C.BoardSize; ++row)
+                    for (ushort col = 0; col < C.BoardSize; ++col)
                     {
-                        Piece p = m_Data[Constants.BoardSize * row + col];
+                        Piece p = m_Data[C.BoardSize * row + col];
                         if ((p & Piece.White) == Piece.White)
                             m_WhitePos.Add(new Pos(row, col));
                         else if ((p & Piece.Black) == Piece.Black)
@@ -154,7 +170,7 @@ namespace Checkers
         /// </summary>
         public Piece GetAt(Pos pos)
         {
-            return m_Data[Constants.BoardSize * pos.Row + pos.Col];
+            return m_Data[C.BoardSize * pos.Row + pos.Col];
         }
         /// <summary>
         /// Rows: Bottom -> Top.
@@ -232,24 +248,24 @@ namespace Checkers
             {
                 m_Data[i] = Piece.Empty;
             }
-            for (ushort row = 0; row < Constants.BoardSize / 2 - 1; ++row)
+            for (ushort row = 0; row < C.BoardSize / 2 - 1; ++row)
             {   // Placing white pieces
                 ushort col = 0;
                 if (row % 2 == 0) col = 1;
-                while (col < Constants.BoardSize)
+                while (col < C.BoardSize)
                 {
-                    m_Data[Constants.BoardSize * row + col] = Piece.White;
+                    m_Data[C.BoardSize * row + col] = Piece.White;
                     m_WhitePos.Add(new Pos(row, col));
                     col += 2;
                 }
             }
-            for (ushort row = (ushort)(Constants.BoardSize-1); row > Constants.BoardSize / 2; --row)
+            for (ushort row = (ushort)(C.BoardSize-1); row > C.BoardSize / 2; --row)
             {   // Placing black pieces
                 ushort col = 0;
                 if (row % 2 == 0) col = 1;
-                while (col < Constants.BoardSize)
+                while (col < C.BoardSize)
                 {
-                    m_Data[Constants.BoardSize * row + col] = Piece.Black;
+                    m_Data[C.BoardSize * row + col] = Piece.Black;
                     m_BlackPos.Add(new Pos(row, col));
                     col += 2;
                 }
@@ -260,24 +276,24 @@ namespace Checkers
         /// </summary>
         public static void Initialize(out Piece[] board)
         {
-            board = new Piece[Constants.BoardSize * Constants.BoardSize];
-            for (ushort row = 0; row < Constants.BoardSize / 2 - 1; ++row)
+            board = new Piece[C.BoardSize * C.BoardSize];
+            for (ushort row = 0; row < C.BoardSize / 2 - 1; ++row)
             {   // Placing white pieces
                 ushort col = 0;
                 if (row % 2 == 0) col = 1;
-                while (col < Constants.BoardSize)
+                while (col < C.BoardSize)
                 {
-                    board[Constants.BoardSize * row + col] = Piece.White;
+                    board[C.BoardSize * row + col] = Piece.White;
                     col += 2;
                 }
             }
-            for (ushort row = (ushort)(Constants.BoardSize - 1); row > Constants.BoardSize / 2; --row)
+            for (ushort row = (ushort)(C.BoardSize - 1); row > C.BoardSize / 2; --row)
             {   // Placing black pieces
                 ushort col = 0;
                 if (row % 2 == 0) col = 1;
-                while (col < Constants.BoardSize)
+                while (col < C.BoardSize)
                 {
-                    board[Constants.BoardSize * row + col] = Piece.Black;
+                    board[C.BoardSize * row + col] = Piece.Black;
                     col += 2;
                 }
             }
@@ -354,8 +370,8 @@ namespace Checkers
         }
         private void Replace(Pos pos, Piece pnew, bool record)
         {
-            Piece pprev = m_Data[Constants.BoardSize * pos.Row + pos.Col];
-            m_Data[Constants.BoardSize * pos.Row + pos.Col] = pnew;
+            Piece pprev = m_Data[C.BoardSize * pos.Row + pos.Col];
+            m_Data[C.BoardSize * pos.Row + pos.Col] = pnew;
 
             if (record)
                 m_Log.Push(new Operation(pprev, pos));
@@ -455,7 +471,7 @@ namespace Checkers
         // Doesn't check 'pos'
         public bool CanJumpRight(Pos pos)
         {
-            if (pos.Col > Constants.BoardSize - 3 || pos.Row > Constants.BoardSize - 3)
+            if (pos.Col > C.BoardSize - 3 || pos.Row > C.BoardSize - 3)
                 return false;
             if ((m_Builder.GetAt(pos.Row + 1, pos.Col + 1) & Piece.Black) == Piece.Black &&
                 m_Builder.GetAt(pos.Row + 2, pos.Col + 2) == Piece.Empty)
@@ -469,7 +485,7 @@ namespace Checkers
             m_Builder.SetAt(pos, Piece.Empty);
             m_Builder.SetAt(pos.Row + 1, pos.Col + 1, Piece.Empty);
             Pos newpos = new Pos(pos.Row + 2, pos.Col + 2);
-            if (newpos.Row == Constants.BoardSize - 1)
+            if (newpos.Row == C.BoardSize - 1)
                 m_Builder.SetAt(newpos, (Piece.White | Piece.King));
             else
             {
@@ -492,7 +508,7 @@ namespace Checkers
         }
         public bool CanJumpLeft(Pos pos)
         {
-            if (pos.Col < 2 || pos.Row > Constants.BoardSize - 3)
+            if (pos.Col < 2 || pos.Row > C.BoardSize - 3)
                 return false;
             if ((m_Builder.GetAt(pos.Row + 1, pos.Col - 1) & Piece.Black) == Piece.Black &&
                 m_Builder.GetAt(pos.Row + 2, pos.Col - 2) == Piece.Empty)
@@ -505,7 +521,7 @@ namespace Checkers
             m_Builder.SetAt(pos, Piece.Empty);
             m_Builder.SetAt(pos.Row + 1, pos.Col - 1, Piece.Empty);
             Pos newpos = new Pos(pos.Row + 2, pos.Col - 2);
-            if (newpos.Row == Constants.BoardSize - 1)
+            if (newpos.Row == C.BoardSize - 1)
                 m_Builder.SetAt(newpos, (Piece.White | Piece.King));
             else
             {
@@ -529,9 +545,9 @@ namespace Checkers
         public Direction CanJumpKing(Pos pos)
         {
             Direction where = Direction.None;
-            if (pos.Row < Constants.BoardSize - 2)
+            if (pos.Row < C.BoardSize - 2)
             {
-                if (pos.Col < Constants.BoardSize - 2 &&
+                if (pos.Col < C.BoardSize - 2 &&
                     (m_Builder.GetAt(pos.Row + 1, pos.Col + 1) & Piece.Black) == Piece.Black &&
                     (m_Builder.GetAt(pos.Row + 2, pos.Col + 2) == Piece.Empty))
                     where |= Direction.RightUp;
@@ -542,7 +558,7 @@ namespace Checkers
             }
             if (pos.Row > 1)
             {
-                if (pos.Col < Constants.BoardSize - 2 &&
+                if (pos.Col < C.BoardSize - 2 &&
                     (m_Builder.GetAt(pos.Row - 1, pos.Col + 1) & Piece.Black) == Piece.Black &&
                     (m_Builder.GetAt(pos.Row - 2, pos.Col + 2) == Piece.Empty))
                     where |= Direction.RightDown;
@@ -609,7 +625,7 @@ namespace Checkers
         }
         public bool CanMoveRight(Pos pos)
         {
-            if (pos.Col > Constants.BoardSize - 2 || pos.Row > Constants.BoardSize - 2)
+            if (pos.Col > C.BoardSize - 2 || pos.Row > C.BoardSize - 2)
                 return false;
             if (m_Builder.GetAt(pos.Row + 1, pos.Col + 1) == Piece.Empty)
                 return true;
@@ -619,14 +635,14 @@ namespace Checkers
         {
             Piece mypiece = m_Builder.GetAt(pos);
             m_Builder.SetAt(pos, Piece.Empty);
-            if (pos.Row + 1 == Constants.BoardSize - 1)
+            if (pos.Row + 1 == C.BoardSize - 1)
                 m_Builder.SetAt(pos.Row + 1, pos.Col + 1, (Piece.White | Piece.King));
             else
                 m_Builder.SetAt(pos.Row + 1, pos.Col + 1, mypiece);
         }
         public bool CanMoveLeft(Pos pos)
         {
-            if (pos.Col < 1 || pos.Row > Constants.BoardSize - 2)
+            if (pos.Col < 1 || pos.Row > C.BoardSize - 2)
                 return false;
             if (m_Builder.GetAt(pos.Row + 1, pos.Col - 1) == Piece.Empty)
                 return true;
@@ -636,7 +652,7 @@ namespace Checkers
         {
             Piece mypiece = m_Builder.GetAt(pos);
             m_Builder.SetAt(pos, Piece.Empty);
-            if (pos.Row + 1 == Constants.BoardSize - 1)
+            if (pos.Row + 1 == C.BoardSize - 1)
                 m_Builder.SetAt(pos.Row + 1, pos.Col - 1, (Piece.White | Piece.King));
             else
                 m_Builder.SetAt(pos.Row + 1, pos.Col - 1, mypiece);
@@ -644,9 +660,9 @@ namespace Checkers
         public Direction CanMoveKing(Pos pos)
         {
             Direction where = Direction.None;
-            if (pos.Row < Constants.BoardSize - 1)
+            if (pos.Row < C.BoardSize - 1)
             {
-                if (pos.Col < Constants.BoardSize - 1 && 
+                if (pos.Col < C.BoardSize - 1 && 
                     m_Builder.GetAt(pos.Row + 1, pos.Col + 1) == Piece.Empty)
                     where |= Direction.RightUp;
                 if (pos.Col > 0 && 
@@ -655,7 +671,7 @@ namespace Checkers
             }
             if (pos.Row > 0)
             {
-                if (pos.Col < Constants.BoardSize - 1 &&
+                if (pos.Col < C.BoardSize - 1 &&
                     m_Builder.GetAt(pos.Row - 1, pos.Col + 1) == Piece.Empty)
                     where |= Direction.RightDown;
                 if (pos.Col > 0 &&
@@ -737,7 +753,7 @@ namespace Checkers
         // Doesn't check if pos is Black
         public bool CanJumpRight(Pos pos)
         {
-            if (pos.Col > Constants.BoardSize - 3 || pos.Row < 2)
+            if (pos.Col > C.BoardSize - 3 || pos.Row < 2)
                 return false;
             if ((m_Builder.GetAt(pos.Row - 1, pos.Col + 1) & Piece.White) == Piece.White &&
                 m_Builder.GetAt(pos.Row - 2, pos.Col + 2) == Piece.Empty)
@@ -811,9 +827,9 @@ namespace Checkers
         public Direction CanJumpKing(Pos pos)
         {
             Direction where = Direction.None;
-            if (pos.Row < Constants.BoardSize - 2)
+            if (pos.Row < C.BoardSize - 2)
             {
-                if (pos.Col < Constants.BoardSize - 2 &&
+                if (pos.Col < C.BoardSize - 2 &&
                     (m_Builder.GetAt(pos.Row + 1, pos.Col + 1) & Piece.White) == Piece.White &&
                     (m_Builder.GetAt(pos.Row + 2, pos.Col + 2) == Piece.Empty))
                     where |= Direction.RightUp;
@@ -824,7 +840,7 @@ namespace Checkers
             }
             if (pos.Row > 1)
             {
-                if (pos.Col < Constants.BoardSize - 2 &&
+                if (pos.Col < C.BoardSize - 2 &&
                     (m_Builder.GetAt(pos.Row - 1, pos.Col + 1) & Piece.White) == Piece.White &&
                     (m_Builder.GetAt(pos.Row - 2, pos.Col + 2) == Piece.Empty))
                     where |= Direction.RightDown;
@@ -891,7 +907,7 @@ namespace Checkers
         }
         public bool CanMoveRight(Pos pos)
         {
-            if (pos.Col > Constants.BoardSize - 2 || pos.Row < 1)
+            if (pos.Col > C.BoardSize - 2 || pos.Row < 1)
                 return false;
             if (m_Builder.GetAt(pos.Row - 1, pos.Col + 1) == Piece.Empty)
                 return true;
@@ -926,9 +942,9 @@ namespace Checkers
         public Direction CanMoveKing(Pos pos)   // same as White
         {
             Direction where = Direction.None;
-            if (pos.Row < Constants.BoardSize - 1)
+            if (pos.Row < C.BoardSize - 1)
             {
-                if (pos.Col < Constants.BoardSize - 1 &&
+                if (pos.Col < C.BoardSize - 1 &&
                     m_Builder.GetAt(pos.Row + 1, pos.Col + 1) == Piece.Empty)
                     where |= Direction.RightUp;
                 if (pos.Col > 0 &&
@@ -937,7 +953,7 @@ namespace Checkers
             }
             if (pos.Row > 0)
             {
-                if (pos.Col < Constants.BoardSize - 1 &&
+                if (pos.Col < C.BoardSize - 1 &&
                     m_Builder.GetAt(pos.Row - 1, pos.Col + 1) == Piece.Empty)
                     where |= Direction.RightDown;
                 if (pos.Col > 0 &&
@@ -1035,7 +1051,7 @@ namespace Checkers
             else m_Pc = new BlackPiececontroller(m_Build);
         }
         /// <summary>
-        /// Updates all internal states except color
+        /// Updates all internal states except color. Color should be updated prior to this.
         /// </summary>
         public Piece[] CurrentState
         {
@@ -1066,6 +1082,14 @@ namespace Checkers
 
                 UpdateMembers();
             }
+        }
+        /// <summary>
+        /// All-in-one initialization
+        /// </summary>
+        void Configure(bool whiteColor, Piece[] newstate)
+        {
+            SetColor(whiteColor);
+            CurrentState = newstate;
         }
         /// <summary>
         /// All members must be initialized and configured (by CurrentState and SetColor()).
@@ -1289,7 +1313,7 @@ namespace Checkers
         /// </summary>
         public bool AITurn()
         {
-            m_Cg.SetColor((m_WhiteAI) ? true : false);
+            m_Cg.SetColor((m_WhiteAI) ? C.White : C.Black);
             m_Cg.CurrentState = m_Board;
 
             var children = m_Cg.Childs;
@@ -1312,10 +1336,10 @@ namespace Checkers
         /// </summary>
         public bool PlayerTurn(Pos pos, Direction dirn)
         {
-            m_Cg.SetColor((m_WhiteAI) ? false : true);
+            m_Cg.SetColor((m_WhiteAI) ? C.Black : C.White);
             m_Cg.CurrentState = m_Board;
             
-            if (m_Cg.Controller.IsValid(true, pos)) // is a king
+            if (m_Cg.Controller.IsValid(C.King, pos))
             {
                 Direction whereCanGo = (m_Cg.Moving) ? m_Cg.Controller.CanMoveKing(pos) : m_Cg.Controller.CanJumpKing(pos);
                 if ((whereCanGo & dirn) == dirn)
@@ -1352,9 +1376,9 @@ namespace Checkers
         private double AlphaBetaPruning(Piece[] node, int depth, double alpha = 0.0, double beta = 1.0, bool aiturn = false)
         {
             if (m_WhiteAI)
-                m_Cg.SetColor((aiturn) ? true : false);
+                m_Cg.SetColor((aiturn) ? C.White : C.Black);
             else
-                m_Cg.SetColor((aiturn) ? false : true);
+                m_Cg.SetColor((aiturn) ? C.Black : C.White);
             m_Cg.CurrentState = node;
 
             double val = m_Cg.HeuristicValue(m_WhiteAI);

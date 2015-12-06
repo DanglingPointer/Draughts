@@ -90,31 +90,53 @@ namespace Checkers
             bb.SetAt(3, 4, Piece.Empty);
             bb.SetAt(1, 2, Piece.White | Piece.King);
             bb.SetAt(2, 3, Piece.Black);
+            bb.ResetCounter();
             d = wpc.CanJumpKing(new Pos(1, 2));
             wpc.JumpKing(d, new Pos(1, 2));
             Aux.Print(copy);
+            bb.ResetState();
+            Aux.Print(copy);
+            if (bpc.IsValid(false, new Pos(2, 3)))
+                Console.WriteLine("black man at 2, 3");
+
+            // Testing ChildGetter
+
+            var cg = new ChildGetter();
+            cg.SetColor(C.White);
+            cg.CurrentState = copy;
+
+            Console.WriteLine("Initial board:");
+            Aux.Print(copy);
+
+            var children = cg.Childs;
+            int i = 0;
+            foreach(Piece[] pss in children)
+            {
+                Console.WriteLine("Child number {0}:", ++i);
+                Aux.Print(pss);
+            }
 
             ////3,4 left
             //d = wpc.CanMoveKing(new Pos(3, 4));
             //wpc.MoveKing(Direction.LeftUp, new Pos(3, 4));
             //Aux.Print(copy);
 
-            //// 5, 4 jump left
+            ////5, 4 jump left
             //if (bpc.CanJumpLeft(new Pos(5, 4)))
             //    bpc.JumpLeft(new Pos(5, 4));
             //Aux.Print(copy);
 
-            //// 2, 5 move left
+            ////2, 5 move left
             //if (wpc.CanMoveLeft(new Pos(2, 5)))
             //    wpc.MoveLeft(new Pos(2, 5));
             //Aux.Print(copy);
 
-            ////// 2, 1 jump right
-            ////if (wpc.CanJumpRight(new Pos(2, 1)))
-            ////    wpc.JumpRight(new Pos(2, 1));
-            ////Aux.Print(copy);
+            //// 2, 1 jump right
+            //if (wpc.CanJumpRight(new Pos(2, 1)))
+            //    wpc.JumpRight(new Pos(2, 1));
+            //Aux.Print(copy);
 
-            //// 1, 4, move left
+            //1, 4, move left
             //if (wpc.CanMoveLeft(new Pos(1, 4)))
             //    wpc.MoveLeft(new Pos(1, 4));
             //Aux.Print(copy);
