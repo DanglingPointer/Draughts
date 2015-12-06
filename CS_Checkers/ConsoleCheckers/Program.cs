@@ -52,6 +52,76 @@ namespace Checkers
                 Console.WriteLine("black piece at pos {0}, {1}", p.Row, p.Col);
             }
 
+            // Testing Piececontrollers
+            IPiececontroller wpc = new WhitePiececontroller(bb);
+            IPiececontroller bpc = new BlackPiececontroller(bb);
+            if (wpc.CanMoveRight(new Pos(2, 3)))
+                wpc.MoveRight(new Pos(2, 3));
+            if (bpc.CanMoveRight(new Pos(5, 2)))
+                bpc.MoveRight(new Pos(5, 2));
+            bb.SetAt(7, 4, Piece.Empty);
+            if (bpc.CanMoveLeft(new Pos(5, 6)))
+                bpc.MoveLeft(new Pos(5, 6));
+
+            Aux.Print(copy);
+
+            if (wpc.CanJumpLeft(new Pos(3, 4)))
+                wpc.JumpLeft(new Pos(3, 4));
+
+            Aux.Print(copy);
+
+            Direction d = wpc.CanJumpKing(new Pos(7,4));
+            wpc.JumpKing(d, new Pos(7, 4));
+            Aux.Print(copy);
+
+            // 5, 4 right move
+            if (bpc.CanMoveRight(new Pos(5, 4)))
+                bpc.MoveRight(new Pos(5, 4));
+            Aux.Print(copy);
+
+            if (bpc.CanMoveRight(new Pos(6, 1)))
+                bpc.MoveRight(new Pos(6, 1));
+            if (bpc.CanMoveRight(new Pos(5, 2)))
+                bpc.MoveRight(new Pos(5, 2));
+            if (bpc.CanMoveRight(new Pos(7, 0)))
+                bpc.MoveRight(new Pos(7, 0));
+            Aux.Print(copy);
+
+            bb.SetAt(3, 4, Piece.Empty);
+            bb.SetAt(1, 2, Piece.White | Piece.King);
+            bb.SetAt(2, 3, Piece.Black);
+            d = wpc.CanJumpKing(new Pos(1, 2));
+            wpc.JumpKing(d, new Pos(1, 2));
+            Aux.Print(copy);
+
+            ////3,4 left
+            //d = wpc.CanMoveKing(new Pos(3, 4));
+            //wpc.MoveKing(Direction.LeftUp, new Pos(3, 4));
+            //Aux.Print(copy);
+
+            //// 5, 4 jump left
+            //if (bpc.CanJumpLeft(new Pos(5, 4)))
+            //    bpc.JumpLeft(new Pos(5, 4));
+            //Aux.Print(copy);
+
+            //// 2, 5 move left
+            //if (wpc.CanMoveLeft(new Pos(2, 5)))
+            //    wpc.MoveLeft(new Pos(2, 5));
+            //Aux.Print(copy);
+
+            ////// 2, 1 jump right
+            ////if (wpc.CanJumpRight(new Pos(2, 1)))
+            ////    wpc.JumpRight(new Pos(2, 1));
+            ////Aux.Print(copy);
+
+            //// 1, 4, move left
+            //if (wpc.CanMoveLeft(new Pos(1, 4)))
+            //    wpc.MoveLeft(new Pos(1, 4));
+            //Aux.Print(copy);
+            //if (wpc.CanMoveLeft(new Pos(1, 4)))
+            //    wpc.MoveLeft(new Pos(1, 4));
+            //Aux.Print(copy);
+
 
             Console.ReadKey();
         }

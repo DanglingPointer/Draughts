@@ -80,6 +80,7 @@ namespace Checkers
         [Conditional("DEBUG")]
         public static void Print(Piece[] data)
         {
+            Console.WriteLine("----------------");
             for (int row = Constants.BoardSize-1; row >= 0; --row)
             {
                 for (int col = 0; col < Constants.BoardSize; ++col)
@@ -105,6 +106,7 @@ namespace Checkers
                 }
                 Console.WriteLine();
             }
+            Console.WriteLine("----------------");
         }
     }
     //===============================================================================
@@ -406,7 +408,7 @@ namespace Checkers
         /// </summary>
         Direction CanJumpKing(Pos pos);
         /// <summary>
-        /// Doesn't jump if invalide direction
+        /// Undefined behavior if invalide (or multiple) direction
         /// </summary>
         void JumpKing(Direction dirn, Pos pos);
         /// <summary>
@@ -430,7 +432,7 @@ namespace Checkers
         /// </summary>
         Direction CanMoveKing(Pos pos);
         /// <summary>
-        /// Moves only if 'dirn' is a valid direction
+        /// Undefined behavior if invalide (or multiple) direction
         /// </summary>
         void MoveKing(Direction dirn, Pos pos);
         /// <summary>
