@@ -1,4 +1,5 @@
-﻿// Rules: 
+﻿// Rules: https://en.wikipedia.org/wiki/English_draughts
+// For console version the macro CONSOLE must be defined
 using System;
 using System.Diagnostics;
 using System.Collections.Generic;
