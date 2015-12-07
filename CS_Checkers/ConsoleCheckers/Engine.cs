@@ -14,7 +14,20 @@ namespace Checkers
         /// <summary>
         /// Size of the board's side
         /// </summary>
-        public static int BoardSize = 8;
+        public static int BoardSize
+        {
+            get { return m_Size; }
+            set
+            {
+                if (!m_SizeSet)
+                {
+                    m_SizeSet = true;
+                    m_Size = value;
+                }
+            }
+        }
+        private static int m_Size = 8;
+        private static bool m_SizeSet = false;
         /// <summary>
         /// Substitution for #define WHITE true
         /// </summary>
@@ -1186,6 +1199,11 @@ namespace Checkers
                         }
                     }
                 }
+                //Console.WriteLine("Getting children. Current state:");
+                //Aux.Print(m_Build.Field);
+                //Console.WriteLine("Children states:");
+                //foreach (Piece[] p in childs)
+                //    Aux.Print(p);
                 return childs;
             }
         }
@@ -1197,8 +1215,6 @@ namespace Checkers
             int numWhite = m_Build.WhitePositions.Length;
             int numBlack = m_Build.BlackPositions.Length;
             int numerator = (white_is_max_side) ? numWhite : numBlack;
-            if (numWhite == 0 && numBlack == 0)
-                return 0.5;                
             return (double)numerator / (numWhite + numBlack);
         }
         public bool Jumping
@@ -1227,6 +1243,9 @@ namespace Checkers
             else
                 throw new InvalidOperationException();
 
+            //Console.WriteLine("Updating members. Current state:");
+            //Aux.Print(m_Build.Field);
+
             bool jump = false;
             foreach (Pos p in allPositions)
             {
@@ -1239,6 +1258,8 @@ namespace Checkers
                         {
                             m_Kings.Clear();
                             m_Kingdirns.Clear();
+                            m_Righties.Clear();
+                            m_Lefties.Clear();
                             jump = true;
                         }
                         m_Kings.Add(p);
@@ -1257,6 +1278,9 @@ namespace Checkers
                         if (!jump)
                         {
                             m_Righties.Clear();
+                            m_Lefties.Clear();
+                            m_Kings.Clear();
+                            m_Kingdirns.Clear();
                             jump = true;
                         }
                         m_Righties.Add(p);
@@ -1266,6 +1290,9 @@ namespace Checkers
                         if (!jump)
                         {
                             m_Lefties.Clear();
+                            m_Righties.Clear();
+                            m_Kings.Clear();
+                            m_Kingdirns.Clear();
                             jump = true;
                         }
                         m_Lefties.Add(p);
@@ -1278,6 +1305,14 @@ namespace Checkers
                 }
             }
             m_Move = (jump) ? MoveType.Jump : MoveType.Move;
+
+
+            //Console.WriteLine("Righties:");
+            //foreach (Pos p in m_Righties)
+            //    Console.WriteLine("{0}, {1}", p.Row, p.Col);
+            //Console.WriteLine("Lefties:");
+            //foreach (Pos p in m_Lefties)
+            //    Console.WriteLine("{0}, {1}", p.Row, p.Col);
         }
         MoveType m_Move;
         IPiececontroller m_Pc;
@@ -1301,6 +1336,11 @@ namespace Checkers
             m_Cg = new ChildGetter();
             BoardBuilder.Initialize(out m_Board);
         }
+        public Gameplay(bool AI_is_white, int boardSize, int depth = -1)
+            :this(AI_is_white, depth)
+        {
+            C.BoardSize = boardSize;
+        }
         /// <summary>
         /// Current game state.
         /// </summary>
@@ -1320,7 +1360,7 @@ namespace Checkers
             if (children.Count == 0)
                 return false;
 
-            var childValues = new List<double>();
+            var childValues = new double[children.Count];
             int bestChildInd = 0;
             for (int i = 0; i < children.Count; ++i)
             {
@@ -1410,9 +1450,9 @@ namespace Checkers
             }
             return val;
         }
-        int m_Depth;
-        bool m_WhiteAI;
+        int         m_Depth;
+        bool        m_WhiteAI;
         ChildGetter m_Cg;
-        Piece[] m_Board;
+        Piece[]     m_Board;
     }
 }
