@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define CONSOLE
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,14 +11,16 @@ namespace Checkers
     {
         static void Main(string[] args)
         {
-            Gameplay game = new Gameplay(C.Black, 10);
+            Gameplay game = new Gameplay(C.Black);
             bool cont;
+            Console.WriteLine("Direction:\nru = right up\nrd = right down\nlu = left up\nld = left down\n");
             do
             {
                 Aux.Print(game.Board);
                 Console.WriteLine("Enter [row col direction]");
-                Console.WriteLine("Direction: ru, rd, lu, ld");
                 string[] inputs = Console.ReadLine().Split(' ');
+                if (inputs.Length < 3)
+                    return;
                 int row = Convert.ToInt32(inputs[0]);
                 int col = Convert.ToInt32(inputs[1]);
                 Direction dirn;

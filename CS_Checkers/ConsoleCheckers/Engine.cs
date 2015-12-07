@@ -1,19 +1,14 @@
-﻿using System;
+﻿// Rules: 
+using System;
 using System.Diagnostics;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Checkers
 {
     //===============================================================================
-    public static class C
+    internal static class C
     {
-        /// <summary>
-        /// Size of the board's side
-        /// </summary>
+        /// <summary> Size of the board's side </summary>
         public static int BoardSize
         {
             get { return m_Size; }
@@ -28,21 +23,13 @@ namespace Checkers
         }
         private static int m_Size = 8;
         private static bool m_SizeSet = false;
-        /// <summary>
-        /// Substitution for #define WHITE true
-        /// </summary>
+        /// <summary> Substitution for #define WHITE true </summary>
         public const bool White = true;
-        /// <summary>
-        /// Substitution for #define BLACK false
-        /// </summary>
+        /// <summary> Substitution for #define BLACK false </summary>
         public const bool Black = false;
-        /// <summary>
-        /// Substitution for #define KING true
-        /// </summary>
+        /// <summary> Substitution for #define KING true </summary>
         public const bool King = true;
-        /// <summary>
-        /// Substitution for #define MAN false
-        /// </summary>
+        /// <summary> Substitution for #define MAN false </summary>
         public const bool Man = false;
     }
     [Flags]
@@ -56,11 +43,11 @@ namespace Checkers
     [Flags]
     public enum Direction : byte
     {
-        None = 0,
-        RightUp = 1,
-        LeftUp = 2,
-        RightDown = 4,
-        LeftDown = 8
+        None        = 0x0,
+        RightUp     = 0x1,
+        LeftUp      = 0x2,
+        RightDown   = 0x4,
+        LeftDown    = 0x8
     }
     public struct Pos
     {
@@ -106,7 +93,7 @@ namespace Checkers
             }
             return min;
         }
-        [Conditional("DEBUG")]
+        [Conditional("CONSOLE")]
         public static void Print(Piece[] data)
         {
             Console.WriteLine("----------------");
@@ -363,7 +350,6 @@ namespace Checkers
             Undo(Convert.ToUInt16(i));
         }
         //------------------------------------------------------
-        //------------------------------------------------------
         private struct Operation
         {
             public Operation(Piece p, Pos pos)
@@ -400,9 +386,9 @@ namespace Checkers
                 m_BlackPos.Add(pos);
         }
         //------------------------------------------------------
-        Piece[] m_Data;
-        List<Pos> m_WhitePos;
-        List<Pos> m_BlackPos;
+        Piece[]          m_Data;
+        List<Pos>        m_WhitePos;
+        List<Pos>        m_BlackPos;
         Stack<Operation> m_Log;
     }
     //===============================================================================
@@ -481,7 +467,6 @@ namespace Checkers
             get { return m_Builder; }
             set { if (value != null) m_Builder = value; }
         }
-        // Doesn't check 'pos'
         public bool CanJumpRight(Pos pos)
         {
             if (pos.Col > C.BoardSize - 3 || pos.Row > C.BoardSize - 3)
@@ -491,7 +476,6 @@ namespace Checkers
                 return true;
             return false;
         }
-        // Doesn't check anything
         public void JumpRight(Pos pos)
         {
             Piece mypiece = m_Builder.GetAt(pos);
@@ -763,7 +747,6 @@ namespace Checkers
             get { return m_Builder; }
             set { if (value != null) m_Builder = value; }
         }
-        // Doesn't check if pos is Black
         public bool CanJumpRight(Pos pos)
         {
             if (pos.Col > C.BoardSize - 3 || pos.Row < 2)
@@ -773,7 +756,6 @@ namespace Checkers
                 return true;
             return false;
         }
-        // Doesn't check anything
         public void JumpRight(Pos pos)
         {
             Piece mypiece = m_Builder.GetAt(pos);
@@ -1097,7 +1079,7 @@ namespace Checkers
             }
         }
         /// <summary>
-        /// All-in-one initialization
+        /// All-in-one initialization, recommended instead of SetColor and CurrentState
         /// </summary>
         void Configure(bool whiteColor, Piece[] newstate)
         {
@@ -1199,11 +1181,6 @@ namespace Checkers
                         }
                     }
                 }
-                //Console.WriteLine("Getting children. Current state:");
-                //Aux.Print(m_Build.Field);
-                //Console.WriteLine("Children states:");
-                //foreach (Piece[] p in childs)
-                //    Aux.Print(p);
                 return childs;
             }
         }
@@ -1230,8 +1207,7 @@ namespace Checkers
             get { return m_Pc; }
         }
         /// <summary>
-        /// Either only jumpers ('true') or only movers ('false').
-        /// Doesn't clear the lists
+        /// Either only jumpers ('true') or only movers ('false'). Doesn't clear the lists.
         /// </summary>
         private void UpdateMembers()
         {
@@ -1242,10 +1218,7 @@ namespace Checkers
                 allPositions = m_Build.BlackPositions;
             else
                 throw new InvalidOperationException();
-
-            //Console.WriteLine("Updating members. Current state:");
-            //Aux.Print(m_Build.Field);
-
+            
             bool jump = false;
             foreach (Pos p in allPositions)
             {
@@ -1305,41 +1278,31 @@ namespace Checkers
                 }
             }
             m_Move = (jump) ? MoveType.Jump : MoveType.Move;
-
-
-            //Console.WriteLine("Righties:");
-            //foreach (Pos p in m_Righties)
-            //    Console.WriteLine("{0}, {1}", p.Row, p.Col);
-            //Console.WriteLine("Lefties:");
-            //foreach (Pos p in m_Lefties)
-            //    Console.WriteLine("{0}, {1}", p.Row, p.Col);
         }
         MoveType m_Move;
         IPiececontroller m_Pc;
-        List<Pos> m_Righties;   // to move or jump to the right
-        List<Pos> m_Lefties;    // to move or jump to the left
-        List<Pos> m_Kings;      // Kings that can move or jump
+        List<Pos> m_Righties;           // to move or jump to the right
+        List<Pos> m_Lefties;            // to move or jump to the left
+        List<Pos> m_Kings;              // Kings that can move or jump
         List<Direction> m_Kingdirns;    // where the kings can go
         BoardBuilder m_Build;
     }
     //===============================================================================
     /// <summary>
-    /// 
+    /// The game
     /// </summary>
     //===============================================================================
     public class Gameplay
     {
-        public Gameplay(bool AI_is_white, int depth = -1)
+        public Gameplay(bool AI_is_white) : this(AI_is_white, 8, 9)
+        { }
+        public Gameplay(bool AI_is_white, int boardSize, int depth)
         {
+            C.BoardSize = boardSize;
             m_Depth = depth;
             m_WhiteAI = AI_is_white;
             m_Cg = new ChildGetter();
             BoardBuilder.Initialize(out m_Board);
-        }
-        public Gameplay(bool AI_is_white, int boardSize, int depth = -1)
-            :this(AI_is_white, depth)
-        {
-            C.BoardSize = boardSize;
         }
         /// <summary>
         /// Current game state.
@@ -1374,8 +1337,8 @@ namespace Checkers
         /// <summary>
         /// Returns 'false' if invalid arguments (impossible to perform the move).
         /// </summary>
-        public bool PlayerTurn(Pos pos, Direction dirn)
-        {
+        public bool PlayerTurn(Pos pos, Direction dirn) // Ugly method
+        {   
             m_Cg.SetColor((m_WhiteAI) ? C.Black : C.White);
             m_Cg.CurrentState = m_Board;
             
