@@ -19,16 +19,12 @@ namespace Checkers
         {
             get { return m_Length; }
         }
-        private static int m_Size = 8;
-        private static int m_Length = 32;
+        private static int m_Size;
+        private static int m_Length;
         /// <summary> Substitution for #define WHITE true </summary>
         public const bool White = true;
         /// <summary> Substitution for #define BLACK false </summary>
         public const bool Black = false;
-        /// <summary> Substitution for #define KING true </summary>
-        public const bool King = true;
-        /// <summary> Substitution for #define MAN false </summary>
-        public const bool Man = false;
     }
     [Flags]
     public enum Piece : byte
@@ -47,6 +43,9 @@ namespace Checkers
         RightDown   = 0x4,
         LeftDown    = 0x8
     }
+    /// <summary>
+    /// Immutable, can be converted from/to array index
+    /// </summary>
     public struct Position
     {
         public Position(int row, int col)
@@ -57,8 +56,8 @@ namespace Checkers
             Row = row;
             Col = col;
         }
-        public readonly int Row;
-        public readonly int Col;
+        public int Row { get; }
+        public int Col { get; }
         /// <summary> Returns new position with given offset from 'this'. </summary>
         public Position Offset(int rowoffset, int coloffset)
         {
@@ -156,61 +155,37 @@ namespace Checkers
     //===============================================================================
     internal interface IPiececontroller
     {
-        /// <summary>
-        /// Never creates a Board.
-        /// </summary>
+        /// <summary> Current board to perform operations on </summary>
         Piece[] Board { get; set; }
-        /// <summary>
-        /// Either all black or all white. 
-        /// </summary>
+        /// <summary> Positions of all pieces of corresponding color </summary>
         List<Position> Positions { get; }
-        /// <summary>
-        /// Doesn't check what's at 'pos'
-        /// </summary>
+        /// <summary> Doesn't check what's at 'pos' </summary>
         bool CanJumpRight(Position pos);
-        /// <summary>
+        /// <summary> 
         /// Whatever is at 'pos' always jumps to the right, possible multiple jumps
         /// </summary>
         void JumpRight(Position pos);
-        /// <summary>
-        /// Doesn't check what's at 'pos'
-        /// </summary>
+        /// <summary> Doesn't check what's at 'pos' </summary>
         bool CanJumpLeft(Position pos);
         /// <summary>
         /// Whatever is at 'pos' always jumps to the left, possible multiple jumps
         /// </summary>
         void JumpLeft(Position pos);
-        /// <summary>
-        /// Might return mutiple directions
-        /// </summary>
+        /// <summary> Might return mutiple directions </summary>
         Direction CanJumpKing(Position pos);
-        /// <summary>
-        /// Undefined behavior if invalide (or multiple) direction
-        /// </summary>
+        /// <summary> Undefined behavior if invalide (or multiple) direction </summary>
         void JumpKing(Direction dirn, Position pos);
-        /// <summary>
-        /// Doesn't check what's at 'pos'
-        /// </summary>
+        /// <summary> Doesn't check what's at 'pos' </summary>
         bool CanMoveRight(Position pos);
-        /// <summary>
-        /// Whatever is at 'pos' always moves to the right
-        /// </summary>
+        /// <summary> Whatever is at 'pos' always moves to the right </summary>
         void MoveRight(Position pos);
-        /// <summary>
-        /// Doesn't check what's at 'pos'
-        /// </summary>
+        /// <summary> Doesn't check what's at 'pos' </summary>
         bool CanMoveLeft(Position pos);
-        /// <summary>
-        /// Whatever is at 'pos' always moves to the left
-        /// </summary>
+        /// <summary> Whatever is at 'pos' always moves to the left </summary>
         void MoveLeft(Position pos);
-        /// <summary>
-        /// Might return mutiple directions
-        /// </summary>
+        /// <summary> Might return mutiple directions </summary>
         Direction CanMoveKing(Position pos);
-        /// <summary>
-        /// Undefined behavior if invalide (or multiple) direction
-        /// </summary>
+        /// <summary> Undefined behavior if invalide (or multiple) direction </summary>
         void MoveKing(Direction dirn, Position pos);
     }
     //===============================================================================
@@ -803,10 +778,12 @@ namespace Checkers
             m_State = null;                 
         }
         /// <summary> Configures/refreshes all internal states. </summary>
-        public void Configure(bool color, Piece[] newstate)
+        public void Configure(bool whitecolor, Piece[] newstate)
         {
-            if (color) m_Pc = new WhitePiececontroller(newstate);
-            else       m_Pc = new BlackPiececontroller(newstate);
+            if (whitecolor)
+                m_Pc = new WhitePiececontroller(newstate);
+            else
+                m_Pc = new BlackPiececontroller(newstate);
 
             m_State = newstate;
 
@@ -897,11 +874,14 @@ namespace Checkers
         {
             get { return m_State; }
         }
-        /// <summary> All members must be initialized and configured. </summary>
+        /// <summary> All members must be configured. </summary>
         public List<Piece[]> ChildStates
         {
             get
             {
+                if (m_Move == MoveType.Unset)
+                    throw new InvalidOperationException("Childgetter not configured");
+
                 var childs = new List<Piece[]>();
                 foreach(Position p in m_Righties)
                 {
@@ -1038,8 +1018,6 @@ namespace Checkers
     //===============================================================================
     public class Gameplay
     {
-        public Gameplay(bool AI_is_white) : this(AI_is_white, 8, 9)
-        { }
         public Gameplay(bool AI_is_white, int boardSize, int depth)
         {
             C.BoardSize = boardSize;
@@ -1048,6 +1026,8 @@ namespace Checkers
             m_Cg = new Childgetter();
             Aux.Initialize(out m_Board);
         }
+        public Gameplay(bool AI_is_white) : this(AI_is_white, 8, 9)
+        { }
         /// <summary> Current game state. </summary>
         public Piece[] Board
         {
