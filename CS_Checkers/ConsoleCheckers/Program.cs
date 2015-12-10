@@ -42,7 +42,7 @@ namespace Checkers
                         dirn = Direction.None;
                         break;
                 }
-                game.PlayerTurn(new Pos(row, col), dirn);
+                game.PlayerTurn(new Position(row, col), dirn);
                 Aux.Print(game.Board);
                 Console.WriteLine("\nAI thinking . . . . . . . .\n");
                 cont = game.AITurn();

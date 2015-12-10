@@ -47,24 +47,36 @@ namespace Checkers
         RightDown   = 0x4,
         LeftDown    = 0x8
     }
-    public struct Pos
+    public struct Position
     {
-        public Pos(uint row, uint col)
+        public Position(uint row, uint col)
         {
+            if (row >= C.BoardSize || col >= C.BoardSize)
+                throw new ArgumentOutOfRangeException();
             Row = row;
             Col = col;
         }
-        public Pos(uint index)
-        {
-            Row = index / (C.BoardSize/2);
-            Col = (index % (C.BoardSize/2)) * 2 + Row % 2;
-        }
         public readonly uint Row;
         public readonly uint Col;
-        //public uint Index   // useful???
-        //{
-        //    get { return Row * (C.BoardSize / 2) + Col / 2; }
-        //}
+        /// <summary> Returns new position with given offset from 'this'. </summary>
+        public Position Offset(int rowoffset, int coloffset)
+        {
+            int row = Convert.ToInt32(Row) + rowoffset;
+            int col = Convert.ToInt32(Col) + coloffset;
+            return new Position(Convert.ToUInt32(row), Convert.ToUInt32(col));
+        }
+        /// <summary> Converts position to array index </summary>
+        public static implicit operator uint(Position p)
+        {
+            return p.Row * (C.BoardSize / 2) + p.Col / 2;
+        }
+        /// <summary> Converts array index to position </summary>
+        public static implicit operator Position(uint index)
+        {
+            uint row = index / (C.BoardSize / 2);
+            uint col = (index % (C.BoardSize / 2)) * 2 + row % 2;
+            return new Position(row, col);
+        }
     }
     //===============================================================================
     internal static class Aux
@@ -88,6 +100,21 @@ namespace Checkers
                     min = arg;
             }
             return min;
+        }
+        public static void Initialize(out Piece[] board)
+        {
+            board = new Piece[C.ArrayLength];
+            for (uint i = 0; i < C.ArrayLength / 2 - C.BoardSize / 2; ++i)
+                board[i] = Piece.White;
+            for (uint i = C.ArrayLength / 2 + C.BoardSize / 2; i < C.ArrayLength; ++i)
+                board[i] = Piece.Black;
+        }
+        public static Piece[] Copy(Piece[] original)
+        {
+            int length = original.Length;
+            Piece[] copy = new Piece[length];
+            Array.Copy(original, copy, length);
+            return copy;
         }
         [Conditional("CONSOLE")]
         public static void Print(Piece[] data) // NOT CONVERTED
@@ -123,271 +150,117 @@ namespace Checkers
     }
     //===============================================================================
     /// <summary>
-    /// Wrapper for byte-field Piece[]. Performs elementary operations on pieces.
-    /// </summary>
-    //===============================================================================
-    internal class BoardBuilder
-    {
-        public BoardBuilder()
-        {
-            m_Data = null;
-            m_WhitePos = new List<uint>();
-            m_BlackPos = new List<uint>();
-            m_Log = new Stack<Operation>();
-        }
-        /// <summary> Current board to be processed. When setting, updates all members. </summary>
-        public Piece[] Field
-        {
-            get { return m_Data; }
-            set
-            {
-                m_Data = value;
-                m_WhitePos.Clear();
-                m_BlackPos.Clear();
-                m_Log.Clear();
-                for (uint i = 0; i < C.ArrayLength; ++i)
-                {
-                    if ((m_Data[i] & Piece.White) == Piece.White)
-                        m_WhitePos.Add(i);
-                    else if ((m_Data[i] & Piece.Black) == Piece.Black)
-                        m_BlackPos.Add(i);
-                }
-            }
-        }
-        /// <summary> Rows: Bottom -> Top. Columns: Left -> Right. </summary>
-        public Piece GetAt(Pos pos)
-        {
-            uint ind = pos.Row * (C.BoardSize / 2) + pos.Col / 2;
-            return m_Data[ind];
-        }
-        /// <summary> Rows: Bottom -> Top. Columns: Left -> Right. </summary>
-        public Piece GetAt(uint row, uint col)
-        {
-            return GetAt(new Pos(row, col));
-        }
-        /// <summary> Rows: Bottom -> Top. Columns: Left -> Right. </summary>
-        public void SetAt(Pos pos, Piece p)
-        {
-            uint ind = pos.Row * (C.BoardSize / 2) + pos.Col / 2;
-            Replace(ind, p, true);
-        }
-        /// <summary> Rows: Bottom -> Top. Columns: Left -> Right. </summary>
-        public void SetAt(uint row, uint col, Piece p)
-        {
-            SetAt(new Pos(row, col), p);
-        }
-        /// <summary> Erases memory of all operations since last call. </summary>
-        public void ResetCounter()
-        {
-            m_Log.Clear();
-        }
-        /// <summary> Go back to the state just after the last ResetCounter(). </summary>
-        public void Reset()
-        {
-            while (m_Log.Count != 0)
-            {
-                Operation op = m_Log.Pop();
-                Replace(op.Index, op.Previous, false);
-            }
-        }
-        /// <summary> Returns copy of positions of all white pieces. </summary>
-        public Pos[] WhitePositions
-        {
-            get
-            {
-                Pos[] ps = new Pos[m_WhitePos.Count];
-                uint i = 0;
-                foreach(uint index in m_WhitePos)
-                {
-                    uint row = index / (C.BoardSize/2);
-                    uint col = (index % (C.BoardSize/2)) * 2 + row % 2;
-                    ps[i++] = new Pos(row, col);
-                }
-                return ps;
-            }
-        }
-        /// <summary> Returns copy of positions of all black pieces. </summary>
-        public Pos[] BlackPositions
-        {
-            get
-            {
-                Pos[] ps = new Pos[m_BlackPos.Count];
-                uint i = 0;
-                foreach (uint index in m_WhitePos)
-                {
-                    uint row = index / (C.BoardSize/2);
-                    uint col = (index % (C.BoardSize/2)) * 2 + row % 2;
-                    ps[i++] = new Pos(row, col);
-                }
-                return ps;
-            }
-        }
-        /// <summary> Number of white pieces. </summary>
-        public int NumberWhites
-        {
-            get { return m_WhitePos.Count; }
-        }
-        /// <summary> Number of black pieces. </summary>
-        public int NumberBlacks
-        {
-            get { return m_BlackPos.Count; }
-        }
-        /// <summary> Returns a copy of the current board (or null). </summary>
-        public Piece[] Copy
-        {
-            get
-            {
-                if (m_Data == null)
-                    return null;
-                int length = m_Data.Length;
-                Piece[] copy = new Piece[length];
-                Array.Copy(m_Data, copy, length);
-                return copy;
-            }
-        }
-        /// <summary> Creates new board and inializes it. </summary>
-        public static void Initialize(out Piece[] board)
-        {
-            board = new Piece[C.ArrayLength];
-            for (uint i = 0; i < C.ArrayLength / 2 - C.BoardSize / 2; ++i)
-                board[i] = Piece.White;
-            for (uint i = C.ArrayLength / 2 + C.BoardSize / 2; i < C.ArrayLength; ++i)
-                board[i] = Piece.Black;
-        }
-        private struct Operation
-        {
-            public Operation(Piece p, uint index)
-            {
-                Previous = p; Index = index;
-            }
-            public readonly Piece Previous;
-            public readonly uint Index;
-        }
-        private void Replace(uint index, Piece pnew, bool record)
-        {
-            Piece pprev = m_Data[index];
-            m_Data[index] = pnew;
-
-            if (record)
-                m_Log.Push(new Operation(pprev, index));
-
-            if ((pprev & Piece.White) == Piece.White)
-                m_WhitePos.Remove(index);
-            else if ((pprev & Piece.Black) == Piece.Black)
-                m_BlackPos.Remove(index);
-
-            if ((pnew & Piece.White) == Piece.White)
-                m_WhitePos.Add(index);
-            else if ((pnew & Piece.Black) == Piece.Black)
-                m_BlackPos.Add(index);
-        }
-        Piece[]          m_Data;
-        List<uint>       m_WhitePos;
-        List<uint>       m_BlackPos;
-        Stack<Operation> m_Log;
-    }
-    //===============================================================================
-    /// <summary>
     /// Moves right pieces to right positions if possible
     /// </summary>
     //===============================================================================
     internal interface IPiececontroller
     {
         /// <summary>
-        /// Never creates a BoardBuilder. Doesn't set if null.
+        /// Never creates a Board.
         /// </summary>
-        BoardBuilder Builder { get; set; }
+        Piece[] Board { get; set; }
+        /// <summary>
+        /// Either all black or all white. 
+        /// </summary>
+        List<Position> Positions { get; }
         /// <summary>
         /// Doesn't check what's at 'pos'
         /// </summary>
-        bool CanJumpRight(Pos pos);
+        bool CanJumpRight(Position pos);
         /// <summary>
         /// Whatever is at 'pos' always jumps to the right, possible multiple jumps
         /// </summary>
-        void JumpRight(Pos pos);
+        void JumpRight(Position pos);
         /// <summary>
         /// Doesn't check what's at 'pos'
         /// </summary>
-        bool CanJumpLeft(Pos pos);
+        bool CanJumpLeft(Position pos);
         /// <summary>
         /// Whatever is at 'pos' always jumps to the left, possible multiple jumps
         /// </summary>
-        void JumpLeft(Pos pos);
+        void JumpLeft(Position pos);
         /// <summary>
         /// Might return mutiple directions
         /// </summary>
-        Direction CanJumpKing(Pos pos);
+        Direction CanJumpKing(Position pos);
         /// <summary>
         /// Undefined behavior if invalide (or multiple) direction
         /// </summary>
-        void JumpKing(Direction dirn, Pos pos);
+        void JumpKing(Direction dirn, Position pos);
         /// <summary>
         /// Doesn't check what's at 'pos'
         /// </summary>
-        bool CanMoveRight(Pos pos);
+        bool CanMoveRight(Position pos);
         /// <summary>
         /// Whatever is at 'pos' always moves to the right
         /// </summary>
-        void MoveRight(Pos pos);
+        void MoveRight(Position pos);
         /// <summary>
         /// Doesn't check what's at 'pos'
         /// </summary>
-        bool CanMoveLeft(Pos pos);
+        bool CanMoveLeft(Position pos);
         /// <summary>
         /// Whatever is at 'pos' always moves to the left
         /// </summary>
-        void MoveLeft(Pos pos);
+        void MoveLeft(Position pos);
         /// <summary>
         /// Might return mutiple directions
         /// </summary>
-        Direction CanMoveKing(Pos pos);
+        Direction CanMoveKing(Position pos);
         /// <summary>
         /// Undefined behavior if invalide (or multiple) direction
         /// </summary>
-        void MoveKing(Direction dirn, Pos pos);
-        /// <summary>
-        /// Checks if the piece at 'pos' is valid king or man.
-        /// </summary>
-        bool IsValid(bool king, Pos pos);
+        void MoveKing(Direction dirn, Position pos);
     }
     //===============================================================================
     internal class WhitePiececontroller : IPiececontroller
     {
-        public WhitePiececontroller(BoardBuilder b)
+        public WhitePiececontroller(Piece[] board)
         {
-            m_Builder = b;
+            m_Board = board;
         }
-        public BoardBuilder Builder
+        public Piece[] Board
         {
-            get { return m_Builder; }
-            set { if (value != null) m_Builder = value; }
+            get { return m_Board; }
+            set { m_Board = value; }
         }
-        public bool CanJumpRight(Pos pos)
+        public List<Position> Positions
+        {
+            get
+            {
+                var allwhite = new List<Position>();
+                for (uint i = 0; i < m_Board.Length; ++i)
+                    if ((m_Board[i] & Piece.White) == Piece.White)
+                        allwhite.Add(i);
+                return allwhite;
+            }
+        }
+        public bool CanJumpRight(Position pos)
         {
             if (pos.Col > C.BoardSize - 3 || pos.Row > C.BoardSize - 3)
                 return false;
-            if ((m_Builder.GetAt(pos.Row + 1, pos.Col + 1) & Piece.Black) == Piece.Black &&
-                m_Builder.GetAt(pos.Row + 2, pos.Col + 2) == Piece.Empty)
+            if ((m_Board[pos.Offset(1, 1)] & Piece.Black) == Piece.Black &&
+                m_Board[pos.Offset(2, 2)] == Piece.Empty)
                 return true;
             return false;
         }
-        public void JumpRight(Pos pos)
+        public void JumpRight(Position pos)
         {
-            Piece mypiece = m_Builder.GetAt(pos);
-            m_Builder.SetAt(pos, Piece.Empty);
-            m_Builder.SetAt(pos.Row + 1, pos.Col + 1, Piece.Empty);
-            Pos newpos = new Pos(pos.Row + 2, pos.Col + 2);
+            Piece mypiece = m_Board[pos];
+            m_Board[pos] = Piece.Empty;
+            m_Board[pos.Offset(1, 1)] = Piece.Empty;
+            Position newpos = pos.Offset(2, 2);
             if (newpos.Row == C.BoardSize - 1)
-                m_Builder.SetAt(newpos, (Piece.White | Piece.King));
+                m_Board[newpos] = (Piece.White | Piece.King);
             else
             {
-                m_Builder.SetAt(newpos, mypiece);
+                m_Board[newpos] = mypiece;
 
                 int numrightjump = 0, numleftjump = 0;
                 if (CanJumpRight(newpos))
-                    numrightjump = MaxJump(new Pos(newpos.Row + 2, newpos.Col + 2)) + 1;
+                    numrightjump = MaxJump(newpos.Offset(2, 2)) + 1;
                 else if (CanJumpLeft(newpos))
-                    numleftjump = MaxJump(new Pos(newpos.Row + 2, newpos.Col - 2)) + 1;
+                    numleftjump = MaxJump(newpos.Offset(2, -2)) + 1;
 
                 if (numrightjump != 0 || numrightjump != 0)
                 {   // Multiple jumps
@@ -398,32 +271,32 @@ namespace Checkers
                 }
             }
         }
-        public bool CanJumpLeft(Pos pos)
+        public bool CanJumpLeft(Position pos)
         {
             if (pos.Col < 2 || pos.Row > C.BoardSize - 3)
                 return false;
-            if ((m_Builder.GetAt(pos.Row + 1, pos.Col - 1) & Piece.Black) == Piece.Black &&
-                m_Builder.GetAt(pos.Row + 2, pos.Col - 2) == Piece.Empty)
+            if ((m_Board[pos.Offset(1, -1)] & Piece.Black) == Piece.Black &&
+                m_Board[pos.Offset(2, -2)] == Piece.Empty)
                 return true;
             return false;
         }
-        public void JumpLeft(Pos pos)
+        public void JumpLeft(Position pos)
         {
-            Piece mypiece = m_Builder.GetAt(pos);
-            m_Builder.SetAt(pos, Piece.Empty);
-            m_Builder.SetAt(pos.Row + 1, pos.Col - 1, Piece.Empty);
-            Pos newpos = new Pos(pos.Row + 2, pos.Col - 2);
+            Piece mypiece = m_Board[pos];
+            m_Board[pos] = Piece.Empty;
+            m_Board[pos.Offset(1, -1)] = Piece.Empty;
+            Position newpos = pos.Offset(2, -2);
             if (newpos.Row == C.BoardSize - 1)
-                m_Builder.SetAt(newpos, (Piece.White | Piece.King));
+                m_Board[newpos] = (Piece.White | Piece.King);
             else
             {
-                m_Builder.SetAt(newpos, mypiece);
+                m_Board[newpos] = mypiece;
 
                 int numrightjump = 0, numleftjump = 0;
                 if (CanJumpRight(newpos))
-                    numrightjump = MaxJump(new Pos(newpos.Row + 2, newpos.Col + 2)) + 1;
+                    numrightjump = MaxJump(newpos.Offset(2, 2)) + 1;
                 else if (CanJumpLeft(newpos))
-                    numleftjump = MaxJump(new Pos(newpos.Row + 2, newpos.Col - 2)) + 1;
+                    numleftjump = MaxJump(newpos.Offset(2, -2)) + 1;
 
                 if (numrightjump != 0 || numleftjump != 0)
                 {   // Multiple jumps
@@ -434,74 +307,73 @@ namespace Checkers
                 }
             }
         }
-        public Direction CanJumpKing(Pos pos)
+        public Direction CanJumpKing(Position pos)
         {
             Direction where = Direction.None;
             if (pos.Row < C.BoardSize - 2)
             {
                 if (pos.Col < C.BoardSize - 2 &&
-                    (m_Builder.GetAt(pos.Row + 1, pos.Col + 1) & Piece.Black) == Piece.Black &&
-                    (m_Builder.GetAt(pos.Row + 2, pos.Col + 2) == Piece.Empty))
+                    (m_Board[pos.Offset(1, 1)] & Piece.Black) == Piece.Black &&
+                    m_Board[pos.Offset(2, 2)] == Piece.Empty)
                     where |= Direction.RightUp;
                 if (pos.Col > 1 &&
-                    (m_Builder.GetAt(pos.Row + 1, pos.Col - 1) & Piece.Black) == Piece.Black &&
-                    (m_Builder.GetAt(pos.Row + 2, pos.Col - 2) == Piece.Empty))
+                    (m_Board[pos.Offset(1, -1)] & Piece.Black) == Piece.Black &&
+                    (m_Board[pos.Offset(2, -2)] == Piece.Empty))
                     where |= Direction.LeftUp;
             }
             if (pos.Row > 1)
             {
                 if (pos.Col < C.BoardSize - 2 &&
-                    (m_Builder.GetAt(pos.Row - 1, pos.Col + 1) & Piece.Black) == Piece.Black &&
-                    (m_Builder.GetAt(pos.Row - 2, pos.Col + 2) == Piece.Empty))
+                    (m_Board[pos.Offset(-1, 1)] & Piece.Black) == Piece.Black &&
+                    (m_Board[pos.Offset(-2, 2)] == Piece.Empty))
                     where |= Direction.RightDown;
                 if (pos.Col > 1 &&
-                    (m_Builder.GetAt(pos.Row - 1, pos.Col - 1) & Piece.Black) == Piece.Black &&
-                    (m_Builder.GetAt(pos.Row - 2, pos.Col - 2) == Piece.Empty))
+                    (m_Board[pos.Offset(-1, -1)] & Piece.Black) == Piece.Black &&
+                    (m_Board[pos.Offset(-2, -2)] == Piece.Empty))
                     where |= Direction.LeftDown;
             }
             return where;
         }
-        public void JumpKing(Direction dirn, Pos pos)
+        public void JumpKing(Direction dirn, Position pos)
         {
-            Pos newpos;
-            Piece mypiece = m_Builder.GetAt(pos);
-            m_Builder.SetAt(pos, Piece.Empty);
+            Position newpos;
+            Piece mypiece = m_Board[pos];
+            m_Board[pos] = Piece.Empty;
 
             if (dirn == Direction.RightUp)
             {
-                m_Builder.SetAt(pos.Row + 1, pos.Col + 1, Piece.Empty);
-                newpos = new Pos(pos.Row + 2, pos.Col + 2);
+                m_Board[pos.Offset(1, 1)] = Piece.Empty;
+                newpos = pos.Offset(2, 2);
             }
             else if (dirn == Direction.LeftUp)
             {
-                m_Builder.SetAt(pos.Row + 1, pos.Col - 1, Piece.Empty);
-                newpos = new Pos(pos.Row + 2, pos.Col - 2);
+                m_Board[pos.Offset(1, -1)] = Piece.Empty;
+                newpos = pos.Offset(2, -2);
             }
             else if (dirn == Direction.RightDown)
             {
-                m_Builder.SetAt(pos.Row - 1, pos.Col + 1, Piece.Empty);
-                newpos = new Pos(pos.Row - 2, pos.Col + 2);
+                m_Board[pos.Offset(-1, 1)] = Piece.Empty;
+                newpos = pos.Offset(-2, 2);
             }
             else if (dirn == Direction.LeftDown)
             {
-                m_Builder.SetAt(pos.Row - 1, pos.Col - 1, Piece.Empty);
-                newpos = new Pos(pos.Row - 2, pos.Col - 2);
+                m_Board[pos.Offset(-1, -1)] = Piece.Empty;
+                newpos = pos.Offset(-2, -2);
             }
             else
                 return;
-            m_Builder.SetAt(newpos, mypiece);
-
+            m_Board[newpos] = mypiece;
 
             int rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
             Direction newdirn = CanJumpKing(newpos);
             if ((newdirn & Direction.RightUp) == Direction.RightUp)
-                rightUp = MaxJumpKing(new Pos(newpos.Row + 2, newpos.Col + 2), Direction.LeftDown) + 1;
+                rightUp = MaxJumpKing(newpos.Offset(2, 2), Direction.LeftDown) + 1;
             if ((newdirn & Direction.LeftUp) == Direction.LeftUp)
-                leftUp = MaxJumpKing(new Pos(newpos.Row + 2, newpos.Col - 2), Direction.RightDown) + 1;
+                leftUp = MaxJumpKing(newpos.Offset(2, -2), Direction.RightDown) + 1;
             if ((newdirn & Direction.RightDown) == Direction.RightDown)
-                rightDown = MaxJumpKing(new Pos(newpos.Row - 2, newpos.Col + 2), Direction.LeftUp) + 1;
+                rightDown = MaxJumpKing(newpos.Offset(-2, 2), Direction.LeftUp) + 1;
             if ((newdirn & Direction.LeftDown) == Direction.LeftDown)
-                leftDown = MaxJumpKing(new Pos(newpos.Row - 2, newpos.Col - 2), Direction.RightUp) + 1;
+                leftDown = MaxJumpKing(newpos.Offset(-2, -2), Direction.RightUp) + 1;
 
             if (rightDown != 0 || rightUp != 0 || leftDown != 0 || leftUp != 0)
             {
@@ -515,120 +387,109 @@ namespace Checkers
                     JumpKing(Direction.LeftUp, newpos);
             }
         }
-        public bool CanMoveRight(Pos pos)
+        public bool CanMoveRight(Position pos)
         {
             if (pos.Col > C.BoardSize - 2 || pos.Row > C.BoardSize - 2)
                 return false;
-            if (m_Builder.GetAt(pos.Row + 1, pos.Col + 1) == Piece.Empty)
+            if (m_Board[pos.Offset(1, 1)] == Piece.Empty)
                 return true;
             return false;
         }
-        public void MoveRight(Pos pos)
+        public void MoveRight(Position pos)
         {
-            Piece mypiece = m_Builder.GetAt(pos);
-            m_Builder.SetAt(pos, Piece.Empty);
+            Piece mypiece = m_Board[pos];
+            m_Board[pos] = Piece.Empty;
             if (pos.Row + 1 == C.BoardSize - 1)
-                m_Builder.SetAt(pos.Row + 1, pos.Col + 1, (Piece.White | Piece.King));
+                m_Board[pos.Offset(1, 1)] = (Piece.White | Piece.King);
             else
-                m_Builder.SetAt(pos.Row + 1, pos.Col + 1, mypiece);
+                m_Board[pos.Offset(1, 1)] = mypiece;
         }
-        public bool CanMoveLeft(Pos pos)
+        public bool CanMoveLeft(Position pos)
         {
             if (pos.Col < 1 || pos.Row > C.BoardSize - 2)
                 return false;
-            if (m_Builder.GetAt(pos.Row + 1, pos.Col - 1) == Piece.Empty)
+            if (m_Board[pos.Offset(1, -1)] == Piece.Empty)
                 return true;
             return false;
         }
-        public void MoveLeft(Pos pos)
+        public void MoveLeft(Position pos)
         {
-            Piece mypiece = m_Builder.GetAt(pos);
-            m_Builder.SetAt(pos, Piece.Empty);
+            Piece mypiece = m_Board[pos];
+            m_Board[pos] = Piece.Empty;
             if (pos.Row + 1 == C.BoardSize - 1)
-                m_Builder.SetAt(pos.Row + 1, pos.Col - 1, (Piece.White | Piece.King));
+                m_Board[pos.Offset(1, -1)] = (Piece.White | Piece.King);
             else
-                m_Builder.SetAt(pos.Row + 1, pos.Col - 1, mypiece);
+                m_Board[pos.Offset(1, -1)] = mypiece;
         }
-        public Direction CanMoveKing(Pos pos)
+        public Direction CanMoveKing(Position pos)
         {
             Direction where = Direction.None;
             if (pos.Row < C.BoardSize - 1)
             {
-                if (pos.Col < C.BoardSize - 1 && 
-                    m_Builder.GetAt(pos.Row + 1, pos.Col + 1) == Piece.Empty)
+                if (pos.Col < C.BoardSize - 1 &&
+                    m_Board[pos.Offset(1, 1)] == Piece.Empty)
                     where |= Direction.RightUp;
-                if (pos.Col > 0 && 
-                    m_Builder.GetAt(pos.Row + 1, pos.Col - 1) == Piece.Empty)
+                if (pos.Col > 0 &&
+                    m_Board[pos.Offset(1, -1)] == Piece.Empty)
                     where |= Direction.LeftUp;
             }
             if (pos.Row > 0)
             {
                 if (pos.Col < C.BoardSize - 1 &&
-                    m_Builder.GetAt(pos.Row - 1, pos.Col + 1) == Piece.Empty)
+                    m_Board[pos.Offset(-1, 1)] == Piece.Empty)
                     where |= Direction.RightDown;
                 if (pos.Col > 0 &&
-                    m_Builder.GetAt(pos.Row - 1, pos.Col - 1) == Piece.Empty)
+                    m_Board[pos.Offset(-1, -1)] == Piece.Empty)
                     where |= Direction.LeftDown;
             }
             return where;
         }
-        public void MoveKing(Direction dirn, Pos pos)
+        public void MoveKing(Direction dirn, Position pos)
         {
             if (dirn == Direction.None)
                 return;
-            Piece mypiece = m_Builder.GetAt(pos);
-            m_Builder.SetAt(pos, Piece.Empty);
+            Piece mypiece = m_Board[pos];
+            m_Board[pos] = Piece.Empty;
             if ((dirn & Direction.RightUp) == Direction.RightUp)
-                m_Builder.SetAt(pos.Row + 1, pos.Col + 1, mypiece);
+                m_Board[pos.Offset(1, 1)] = mypiece;
             else if ((dirn & Direction.LeftUp) == Direction.LeftUp)
-                m_Builder.SetAt(pos.Row + 1, pos.Col - 1, mypiece);
+                m_Board[pos.Offset(1, -1)] = mypiece;
             else if ((dirn & Direction.RightDown) == Direction.RightDown)
-                m_Builder.SetAt(pos.Row - 1, pos.Col + 1, mypiece);
+                m_Board[pos.Offset(-1, 1)] = mypiece;
             else if ((dirn & Direction.LeftDown) == Direction.LeftDown)
-                m_Builder.SetAt(pos.Row - 1, pos.Col - 1, mypiece);
-        }
-        public bool IsValid(bool king, Pos pos)
-        {
-            Piece mypiece = m_Builder.GetAt(pos);
-            if ((mypiece & Piece.White) != Piece.White)
-                return false;
-            if (king && (mypiece & Piece.King) == Piece.King)
-                return true;
-            if (!king && (mypiece & Piece.King) == 0)
-                return true;
-            return false;
+                m_Board[pos.Offset(-1, -1)] = mypiece;
         }
         /// <summary>
         /// Returns max number of possible successive jumps from 'pos'
         /// </summary>
-        private int MaxJump(Pos pos)
+        private int MaxJump(Position pos)
         {
             int rightjump=0, leftjump=0;
             if (CanJumpRight(pos))
-                rightjump = MaxJump(new Pos(pos.Row + 2, pos.Col + 2)) + 1;
+                rightjump = MaxJump(pos.Offset(2, 2)) + 1;
             if (CanJumpLeft(pos))
-                leftjump = MaxJump(new Pos(pos.Row + 2, pos.Col - 2)) + 1;
+                leftjump = MaxJump(pos.Offset(2, -2)) + 1;
             return rightjump > leftjump ? rightjump : leftjump;
         }
         /// <summary>
         /// Returns max number of possible successive jumps for a King at 'pos'.
         /// 'nothere' is the direction where it cannot jump from 'pos'.
         /// </summary>
-        private int MaxJumpKing(Pos pos, Direction nothere)
+        private int MaxJumpKing(Position pos, Direction nothere)
         {
             int rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
             Direction dirn = CanJumpKing(pos);
             if (nothere != Direction.RightUp && (dirn & Direction.RightUp) == Direction.RightUp)
-                rightUp = MaxJumpKing(new Pos(pos.Row + 2, pos.Col + 2), Direction.LeftDown) + 1;
+                rightUp = MaxJumpKing(pos.Offset(2, 2), Direction.LeftDown) + 1;
             if (nothere != Direction.LeftUp && (dirn & Direction.LeftUp) == Direction.LeftUp)
-                leftUp = MaxJumpKing(new Pos(pos.Row + 2, pos.Col - 2), Direction.RightDown) + 1;
+                leftUp = MaxJumpKing(pos.Offset(2, -2), Direction.RightDown) + 1;
             if (nothere != Direction.RightDown && (dirn & Direction.RightDown) == Direction.RightDown)
-                rightDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col + 2), Direction.LeftUp) + 1;
+                rightDown = MaxJumpKing(pos.Offset(-2, 2), Direction.LeftUp) + 1;
             if (nothere != Direction.LeftDown && (dirn & Direction.LeftDown) == Direction.LeftDown)
-                leftDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col - 2), Direction.RightUp) + 1;
+                leftDown = MaxJumpKing(pos.Offset(-2, -2), Direction.RightUp) + 1;
             return Aux.Max(rightUp, rightDown, leftUp, leftDown);
         }
-        BoardBuilder m_Builder;
+        Piece[] m_Board;
     }
     //===============================================================================
     internal class BlackPiececontroller : IPiececontroller
@@ -642,7 +503,7 @@ namespace Checkers
             get { return m_Builder; }
             set { if (value != null) m_Builder = value; }
         }
-        public bool CanJumpRight(Pos pos)
+        public bool CanJumpRight(Position pos)
         {
             if (pos.Col > C.BoardSize - 3 || pos.Row < 2)
                 return false;
@@ -651,12 +512,12 @@ namespace Checkers
                 return true;
             return false;
         }
-        public void JumpRight(Pos pos)
+        public void JumpRight(Position pos)
         {
             Piece mypiece = m_Builder.GetAt(pos);
             m_Builder.SetAt(pos, Piece.Empty);
             m_Builder.SetAt(pos.Row - 1, pos.Col + 1, Piece.Empty);
-            Pos newpos = new Pos(pos.Row - 2, pos.Col + 2);
+            Position newpos = new Position(pos.Row - 2, pos.Col + 2);
             if (newpos.Row == 0)
                 m_Builder.SetAt(newpos, (Piece.Black | Piece.King));
             else
@@ -665,9 +526,9 @@ namespace Checkers
 
                 int numrightjump = 0, numleftjump = 0;
                 if (CanJumpRight(newpos))
-                    numrightjump = MaxJump(new Pos(newpos.Row - 2, newpos.Col + 2)) + 1;
+                    numrightjump = MaxJump(new Position(newpos.Row - 2, newpos.Col + 2)) + 1;
                 else if (CanJumpLeft(newpos))
-                    numleftjump = MaxJump(new Pos(newpos.Row - 2, newpos.Col - 2)) + 1;
+                    numleftjump = MaxJump(new Position(newpos.Row - 2, newpos.Col - 2)) + 1;
 
                 if (numrightjump != 0 || numrightjump != 0)
                 {   // Multiple jumps
@@ -678,7 +539,7 @@ namespace Checkers
                 }
             }
         }
-        public bool CanJumpLeft(Pos pos)
+        public bool CanJumpLeft(Position pos)
         {
             if (pos.Col < 2 || pos.Row < 2)
                 return false;
@@ -687,12 +548,12 @@ namespace Checkers
                 return true;
             return false;
         }
-        public void JumpLeft(Pos pos)
+        public void JumpLeft(Position pos)
         {
             Piece mypiece = m_Builder.GetAt(pos);
             m_Builder.SetAt(pos, Piece.Empty);
             m_Builder.SetAt(pos.Row - 1, pos.Col - 1, Piece.Empty);
-            Pos newpos = new Pos(pos.Row - 2, pos.Col - 2);
+            Position newpos = new Position(pos.Row - 2, pos.Col - 2);
             if (newpos.Row == 0)
                 m_Builder.SetAt(newpos, (Piece.Black | Piece.King));
             else
@@ -701,9 +562,9 @@ namespace Checkers
 
                 int numrightjump = 0, numleftjump = 0;
                 if (CanJumpRight(newpos))
-                    numrightjump = MaxJump(new Pos(newpos.Row - 2, newpos.Col + 2)) + 1;
+                    numrightjump = MaxJump(new Position(newpos.Row - 2, newpos.Col + 2)) + 1;
                 else if (CanJumpLeft(newpos))
-                    numleftjump = MaxJump(new Pos(newpos.Row - 2, newpos.Col - 2)) + 1;
+                    numleftjump = MaxJump(new Position(newpos.Row - 2, newpos.Col - 2)) + 1;
 
                 if (numrightjump != 0 || numleftjump != 0)
                 {   // Multiple jumps
@@ -714,7 +575,7 @@ namespace Checkers
                 }
             }
         }
-        public Direction CanJumpKing(Pos pos)
+        public Direction CanJumpKing(Position pos)
         {
             Direction where = Direction.None;
             if (pos.Row < C.BoardSize - 2)
@@ -741,31 +602,31 @@ namespace Checkers
             }
             return where;
         }
-        public void JumpKing(Direction dirn, Pos pos)   // Same as for White
+        public void JumpKing(Direction dirn, Position pos)   // Same as for White
         {
-            Pos newpos;
+            Position newpos;
             Piece mypiece = m_Builder.GetAt(pos);
             m_Builder.SetAt(pos, Piece.Empty);
 
             if (dirn == Direction.RightUp)
             {
                 m_Builder.SetAt(pos.Row + 1, pos.Col + 1, Piece.Empty);
-                newpos = new Pos(pos.Row + 2, pos.Col + 2);
+                newpos = new Position(pos.Row + 2, pos.Col + 2);
             }
             else if (dirn == Direction.LeftUp)
             {
                 m_Builder.SetAt(pos.Row + 1, pos.Col - 1, Piece.Empty);
-                newpos = new Pos(pos.Row + 2, pos.Col - 2);
+                newpos = new Position(pos.Row + 2, pos.Col - 2);
             }
             else if (dirn == Direction.RightDown)
             {
                 m_Builder.SetAt(pos.Row - 1, pos.Col + 1, Piece.Empty);
-                newpos = new Pos(pos.Row - 2, pos.Col + 2);
+                newpos = new Position(pos.Row - 2, pos.Col + 2);
             }
             else if (dirn == Direction.LeftDown)
             {
                 m_Builder.SetAt(pos.Row - 1, pos.Col - 1, Piece.Empty);
-                newpos = new Pos(pos.Row - 2, pos.Col - 2);
+                newpos = new Position(pos.Row - 2, pos.Col - 2);
             }
             else
                 return;
@@ -775,13 +636,13 @@ namespace Checkers
             int rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
             Direction newdirn = CanJumpKing(newpos);
             if ((newdirn & Direction.RightUp) == Direction.RightUp)
-                rightUp = MaxJumpKing(new Pos(newpos.Row + 2, newpos.Col + 2), Direction.LeftDown) + 1;
+                rightUp = MaxJumpKing(new Position(newpos.Row + 2, newpos.Col + 2), Direction.LeftDown) + 1;
             if ((newdirn & Direction.LeftUp) == Direction.LeftUp)
-                leftUp = MaxJumpKing(new Pos(newpos.Row + 2, newpos.Col - 2), Direction.RightDown) + 1;
+                leftUp = MaxJumpKing(new Position(newpos.Row + 2, newpos.Col - 2), Direction.RightDown) + 1;
             if ((newdirn & Direction.RightDown) == Direction.RightDown)
-                rightDown = MaxJumpKing(new Pos(newpos.Row - 2, newpos.Col + 2), Direction.LeftUp) + 1;
+                rightDown = MaxJumpKing(new Position(newpos.Row - 2, newpos.Col + 2), Direction.LeftUp) + 1;
             if ((newdirn & Direction.LeftDown) == Direction.LeftDown)
-                leftDown = MaxJumpKing(new Pos(newpos.Row - 2, newpos.Col - 2), Direction.RightUp) + 1;
+                leftDown = MaxJumpKing(new Position(newpos.Row - 2, newpos.Col - 2), Direction.RightUp) + 1;
 
             if (rightDown != 0 || rightUp != 0 || leftDown != 0 || leftUp != 0)
             {
@@ -795,7 +656,7 @@ namespace Checkers
                     JumpKing(Direction.LeftUp, newpos);
             }
         }
-        public bool CanMoveRight(Pos pos)
+        public bool CanMoveRight(Position pos)
         {
             if (pos.Col > C.BoardSize - 2 || pos.Row < 1)
                 return false;
@@ -803,7 +664,7 @@ namespace Checkers
                 return true;
             return false;
         }
-        public void MoveRight(Pos pos)
+        public void MoveRight(Position pos)
         {
             Piece mypiece = m_Builder.GetAt(pos);
             m_Builder.SetAt(pos, Piece.Empty);
@@ -812,7 +673,7 @@ namespace Checkers
             else
                 m_Builder.SetAt(pos.Row - 1, pos.Col + 1, mypiece);
         }
-        public bool CanMoveLeft(Pos pos)
+        public bool CanMoveLeft(Position pos)
         {
             if (pos.Col < 1 || pos.Row < 1)
                 return false;
@@ -820,7 +681,7 @@ namespace Checkers
                 return true;
             return false;
         }
-        public void MoveLeft(Pos pos)
+        public void MoveLeft(Position pos)
         {
             Piece mypiece = m_Builder.GetAt(pos);
             m_Builder.SetAt(pos, Piece.Empty);
@@ -829,7 +690,7 @@ namespace Checkers
             else
                 m_Builder.SetAt(pos.Row - 1, pos.Col - 1, mypiece);
         }
-        public Direction CanMoveKing(Pos pos)   // same as White
+        public Direction CanMoveKing(Position pos)   // same as White
         {
             Direction where = Direction.None;
             if (pos.Row < C.BoardSize - 1)
@@ -852,7 +713,7 @@ namespace Checkers
             }
             return where;
         }
-        public void MoveKing(Direction dirn, Pos pos)   // same as White
+        public void MoveKing(Direction dirn, Position pos)   // same as White
         {
             if (dirn == Direction.None)
                 return;
@@ -867,7 +728,7 @@ namespace Checkers
             else if ((dirn & Direction.LeftDown) == Direction.LeftDown)
                 m_Builder.SetAt(pos.Row - 1, pos.Col - 1, mypiece);
         }
-        public bool IsValid(bool king, Pos pos)
+        public bool IsValid(bool king, Position pos)
         {
             Piece mypiece = m_Builder.GetAt(pos);
             if ((mypiece & Piece.Black) != Piece.Black)
@@ -881,31 +742,31 @@ namespace Checkers
         /// <summary>
         /// Returns max number of possible successive jumps from 'pos'
         /// </summary>
-        private int MaxJump(Pos pos)
+        private int MaxJump(Position pos)
         {
             int rightjump=0, leftjump=0;
             if (CanJumpRight(pos))
-                rightjump = MaxJump(new Pos(pos.Row - 2, pos.Col + 2)) + 1;
+                rightjump = MaxJump(new Position(pos.Row - 2, pos.Col + 2)) + 1;
             if (CanJumpLeft(pos))
-                leftjump = MaxJump(new Pos(pos.Row - 2, pos.Col - 2)) + 1;
+                leftjump = MaxJump(new Position(pos.Row - 2, pos.Col - 2)) + 1;
             return rightjump > leftjump ? rightjump : leftjump;
         }
         /// <summary>
         /// Returns max number of possible successive jumps for a King at 'pos'.
         /// 'nothere' is the direction where it cannot jump from 'pos'.
         /// </summary>
-        private int MaxJumpKing(Pos pos, Direction nothere) // same as for White
+        private int MaxJumpKing(Position pos, Direction nothere) // same as for White
         {
             int rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
             Direction dirn = CanJumpKing(pos);
             if (nothere != Direction.RightUp && (dirn & Direction.RightUp) == Direction.RightUp)
-                rightUp = MaxJumpKing(new Pos(pos.Row + 2, pos.Col + 2), Direction.LeftDown) + 1;
+                rightUp = MaxJumpKing(new Position(pos.Row + 2, pos.Col + 2), Direction.LeftDown) + 1;
             if (nothere != Direction.LeftUp && (dirn & Direction.LeftUp) == Direction.LeftUp)
-                leftUp = MaxJumpKing(new Pos(pos.Row + 2, pos.Col - 2), Direction.RightDown) + 1;
+                leftUp = MaxJumpKing(new Position(pos.Row + 2, pos.Col - 2), Direction.RightDown) + 1;
             if (nothere != Direction.RightDown && (dirn & Direction.RightDown) == Direction.RightDown)
-                rightDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col + 2), Direction.LeftUp) + 1;
+                rightDown = MaxJumpKing(new Position(pos.Row - 2, pos.Col + 2), Direction.LeftUp) + 1;
             if (nothere != Direction.LeftDown && (dirn & Direction.LeftDown) == Direction.LeftDown)
-                leftDown = MaxJumpKing(new Pos(pos.Row - 2, pos.Col - 2), Direction.RightUp) + 1;
+                leftDown = MaxJumpKing(new Position(pos.Row - 2, pos.Col - 2), Direction.RightUp) + 1;
             return Aux.Max(rightUp, rightDown, leftUp, leftDown);
         }
         BoardBuilder m_Builder;
@@ -951,17 +812,17 @@ namespace Checkers
                 m_Build.Field = value;
 
                 if (m_Righties == null)
-                    m_Righties = new List<Pos>();
+                    m_Righties = new List<Position>();
                 else
                     m_Righties.Clear();
 
                 if (m_Lefties == null)
-                    m_Lefties = new List<Pos>();
+                    m_Lefties = new List<Position>();
                 else
                     m_Lefties.Clear();
 
                 if (m_Kings == null)
-                    m_Kings = new List<Pos>();
+                    m_Kings = new List<Position>();
                 else
                     m_Kings.Clear();
 
@@ -989,7 +850,7 @@ namespace Checkers
             get
             {
                 var childs = new List<Piece[]>();
-                foreach(Pos p in m_Righties)
+                foreach(Position p in m_Righties)
                 {
                     m_Build.ResetCounter();
                     if (m_Move == MoveType.Jump)
@@ -999,7 +860,7 @@ namespace Checkers
                     childs.Add(m_Build.Copy);
                     m_Build.Reset();
                 }
-                foreach(Pos p in m_Lefties)
+                foreach(Position p in m_Lefties)
                 {
                     m_Build.ResetCounter();
                     if (m_Move == MoveType.Jump)
@@ -1012,7 +873,7 @@ namespace Checkers
                 for (int i = 0; i < m_Kings.Count; ++i)
                 {
                     Direction dirn = m_Kingdirns[i];
-                    Pos p = m_Kings[i];
+                    Position p = m_Kings[i];
                     if (m_Move == MoveType.Jump)
                     {
                         if ((dirn & Direction.LeftDown) == Direction.LeftDown)
@@ -1106,7 +967,7 @@ namespace Checkers
         /// </summary>
         private void UpdateMembers()
         {
-            Pos[] allPositions;
+            Position[] allPositions;
             if (m_Pc is WhitePiececontroller)
                 allPositions = m_Build.WhitePositions;
             else if (m_Pc is BlackPiececontroller)
@@ -1115,7 +976,7 @@ namespace Checkers
                 throw new InvalidOperationException();
             
             bool jump = false;
-            foreach (Pos p in allPositions)
+            foreach (Position p in allPositions)
             {
                 if ((m_Build.GetAt(p) & Piece.King) == Piece.King)
                 {
@@ -1176,9 +1037,9 @@ namespace Checkers
         }
         MoveType m_Move;
         IPiececontroller m_Pc;
-        List<Pos> m_Righties;           // to move or jump to the right
-        List<Pos> m_Lefties;            // to move or jump to the left
-        List<Pos> m_Kings;              // Kings that can move or jump
+        List<Position> m_Righties;           // to move or jump to the right
+        List<Position> m_Lefties;            // to move or jump to the left
+        List<Position> m_Kings;              // Kings that can move or jump
         List<Direction> m_Kingdirns;    // where the kings can go
         BoardBuilder m_Build;
     }
@@ -1232,12 +1093,12 @@ namespace Checkers
         /// <summary>
         /// Returns 'false' if invalid arguments (impossible to perform the move).
         /// </summary>
-        public bool PlayerTurn(Pos pos, Direction dirn) // Ugly method
+        public bool PlayerTurn(Position pos, Direction dirn) // Ugly method
         {   
             m_Cg.SetColor((m_WhiteAI) ? C.Black : C.White);
             m_Cg.CurrentState = m_Board;
             
-            if (m_Cg.Controller.IsValid(C.King, pos))
+            if ((m_Board[pos] & Piece.King) == Piece.King)
             {
                 Direction whereCanGo = (m_Cg.Moving) ? m_Cg.Controller.CanMoveKing(pos) : m_Cg.Controller.CanJumpKing(pos);
                 if ((whereCanGo & dirn) == dirn)
