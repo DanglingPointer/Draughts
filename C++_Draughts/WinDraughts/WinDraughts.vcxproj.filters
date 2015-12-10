@@ -30,6 +30,9 @@
     <ClInclude Include="chessboard.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Engine_new.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">

@@ -10,20 +10,17 @@ namespace Checkers
     internal static class C
     {
         /// <summary> Size of the board's side </summary>
-        public static int BoardSize
+        public static uint BoardSize
         {
             get { return m_Size; }
-            set
-            {
-                if (!m_SizeSet)
-                {
-                    m_SizeSet = true;
-                    m_Size = value;
-                }
-            }
+            set { m_Size = value; m_Length = value * value / 2; }
         }
-        private static int m_Size = 8;
-        private static bool m_SizeSet = false;
+        public static uint ArrayLength
+        {
+            get { return m_Length; }
+        }
+        private static uint m_Size = 8;
+        private static uint m_Length = 32;
         /// <summary> Substitution for #define WHITE true </summary>
         public const bool White = true;
         /// <summary> Substitution for #define BLACK false </summary>
@@ -52,24 +49,22 @@ namespace Checkers
     }
     public struct Pos
     {
-        public Pos(int row, int col)
+        public Pos(uint row, uint col)
         {
-            if (row >= C.BoardSize || col >= C.BoardSize
-                || row < 0 || col < 0) 
-                throw new IndexOutOfRangeException();
-            m_Row = Convert.ToUInt16(row);
-            m_Col = Convert.ToUInt16(col);
+            Row = row;
+            Col = col;
         }
-        public ushort Row
+        public Pos(uint index)
         {
-            get { return m_Row; }
+            Row = index / (C.BoardSize/2);
+            Col = (index % (C.BoardSize/2)) * 2 + Row % 2;
         }
-        public ushort Col
-        {
-            get { return m_Col; }
-        }
-        ushort m_Row;
-        ushort m_Col;
+        public readonly uint Row;
+        public readonly uint Col;
+        //public uint Index   // useful???
+        //{
+        //    get { return Row * (C.BoardSize / 2) + Col / 2; }
+        //}
     }
     //===============================================================================
     internal static class Aux
@@ -95,12 +90,12 @@ namespace Checkers
             return min;
         }
         [Conditional("CONSOLE")]
-        public static void Print(Piece[] data)
+        public static void Print(Piece[] data) // NOT CONVERTED
         {
             Console.WriteLine("----------------");
-            for (int row = C.BoardSize-1; row >= 0; --row)
+            for (uint row = C.BoardSize-1; row >= 0; --row)
             {
-                for (int col = 0; col < C.BoardSize; ++col)
+                for (uint col = 0; col < C.BoardSize; ++col)
                 {
                     Piece p = data[C.BoardSize * row + col];
                     if ((p & Piece.White) == Piece.White)
@@ -136,13 +131,11 @@ namespace Checkers
         public BoardBuilder()
         {
             m_Data = null;
-            m_WhitePos = new List<Pos>();
-            m_BlackPos = new List<Pos>();
+            m_WhitePos = new List<uint>();
+            m_BlackPos = new List<uint>();
             m_Log = new Stack<Operation>();
         }
-        /// <summary>
-        /// Current board to be processed. When setting updates all members.
-        /// </summary>
+        /// <summary> Current board to be processed. When setting, updates all members. </summary>
         public Piece[] Field
         {
             get { return m_Data; }
@@ -152,50 +145,94 @@ namespace Checkers
                 m_WhitePos.Clear();
                 m_BlackPos.Clear();
                 m_Log.Clear();
-                for (ushort row = 0; row < C.BoardSize; ++row)
-                    for (ushort col = 0; col < C.BoardSize; ++col)
-                    {
-                        Piece p = m_Data[C.BoardSize * row + col];
-                        if ((p & Piece.White) == Piece.White)
-                            m_WhitePos.Add(new Pos(row, col));
-                        else if ((p & Piece.Black) == Piece.Black)
-                            m_BlackPos.Add(new Pos(row, col));
-                    }
+                for (uint i = 0; i < C.ArrayLength; ++i)
+                {
+                    if ((m_Data[i] & Piece.White) == Piece.White)
+                        m_WhitePos.Add(i);
+                    else if ((m_Data[i] & Piece.Black) == Piece.Black)
+                        m_BlackPos.Add(i);
+                }
             }
         }
-        //------------------------------------------------------
-        /// <summary>
-        /// Rows: Bottom -> Top.
-        /// Columns: Left -> Right.
-        /// Returns type of piece at the given position.
-        /// </summary>
+        /// <summary> Rows: Bottom -> Top. Columns: Left -> Right. </summary>
         public Piece GetAt(Pos pos)
         {
-            return m_Data[C.BoardSize * pos.Row + pos.Col];
+            uint ind = pos.Row * (C.BoardSize / 2) + pos.Col / 2;
+            return m_Data[ind];
         }
-        /// <summary>
-        /// Rows: Bottom -> Top.
-        /// Columns: Left -> Right.
-        /// Returns type of piece at the given position.
-        /// </summary>
-        public Piece GetAt(ushort row, ushort col)
+        /// <summary> Rows: Bottom -> Top. Columns: Left -> Right. </summary>
+        public Piece GetAt(uint row, uint col)
         {
             return GetAt(new Pos(row, col));
         }
-        /// <summary>
-        /// Rows: Bottom -> Top.
-        /// Columns: Left -> Right.
-        /// Returns type of piece at the given position.
-        /// </summary>
-        public Piece GetAt(int row, int col)
+        /// <summary> Rows: Bottom -> Top. Columns: Left -> Right. </summary>
+        public void SetAt(Pos pos, Piece p)
         {
-            ushort urow = Convert.ToUInt16(row);
-            ushort ucol = Convert.ToUInt16(col);
-            return GetAt(new Pos(urow, ucol));
+            uint ind = pos.Row * (C.BoardSize / 2) + pos.Col / 2;
+            Replace(ind, p, true);
         }
-        /// <summary>
-        /// Returns a copy of the current board (or null).
-        /// </summary>
+        /// <summary> Rows: Bottom -> Top. Columns: Left -> Right. </summary>
+        public void SetAt(uint row, uint col, Piece p)
+        {
+            SetAt(new Pos(row, col), p);
+        }
+        /// <summary> Erases memory of all operations since last call. </summary>
+        public void ResetCounter()
+        {
+            m_Log.Clear();
+        }
+        /// <summary> Go back to the state just after the last ResetCounter(). </summary>
+        public void Reset()
+        {
+            while (m_Log.Count != 0)
+            {
+                Operation op = m_Log.Pop();
+                Replace(op.Index, op.Previous, false);
+            }
+        }
+        /// <summary> Returns copy of positions of all white pieces. </summary>
+        public Pos[] WhitePositions
+        {
+            get
+            {
+                Pos[] ps = new Pos[m_WhitePos.Count];
+                uint i = 0;
+                foreach(uint index in m_WhitePos)
+                {
+                    uint row = index / (C.BoardSize/2);
+                    uint col = (index % (C.BoardSize/2)) * 2 + row % 2;
+                    ps[i++] = new Pos(row, col);
+                }
+                return ps;
+            }
+        }
+        /// <summary> Returns copy of positions of all black pieces. </summary>
+        public Pos[] BlackPositions
+        {
+            get
+            {
+                Pos[] ps = new Pos[m_BlackPos.Count];
+                uint i = 0;
+                foreach (uint index in m_WhitePos)
+                {
+                    uint row = index / (C.BoardSize/2);
+                    uint col = (index % (C.BoardSize/2)) * 2 + row % 2;
+                    ps[i++] = new Pos(row, col);
+                }
+                return ps;
+            }
+        }
+        /// <summary> Number of white pieces. </summary>
+        public int NumberWhites
+        {
+            get { return m_WhitePos.Count; }
+        }
+        /// <summary> Number of black pieces. </summary>
+        public int NumberBlacks
+        {
+            get { return m_BlackPos.Count; }
+        }
+        /// <summary> Returns a copy of the current board (or null). </summary>
         public Piece[] Copy
         {
             get
@@ -208,188 +245,45 @@ namespace Checkers
                 return copy;
             }
         }
-        /// <summary>
-        /// Returns copy of positions of all white pieces
-        /// </summary>
-        public Pos[] WhitePositions
-        {
-            get { return m_WhitePos.ToArray(); }
-        }
-        /// <summary>
-        /// Returns copy of positions of all black pieces
-        /// </summary>
-        public Pos[] BlackPositions
-        {
-            get { return m_BlackPos.ToArray(); }
-        }
-        /// <summary>
-        /// Number of operations since last reset.
-        /// </summary>
-        public int Counter
-        {
-            get { return m_Log.Count; }
-        }
-        //------------------------------------------------------
-        /// <summary>
-        /// Erases memory of all operations since last call.
-        /// </summary>
-        public void ResetCounter()
-        {
-            m_Log.Clear();
-        }
-        /// <summary>
-        /// Clears and initializes board, resets counter and updates members.
-        /// </summary>
-        public void Initialize()
-        {
-            m_WhitePos.Clear();
-            m_BlackPos.Clear();
-            m_Log.Clear();
-            for (int i = 0; i < m_Data.Length; ++i)
-            {
-                m_Data[i] = Piece.Empty;
-            }
-            for (ushort row = 0; row < C.BoardSize / 2 - 1; ++row)
-            {   // Placing white pieces
-                ushort col = 0;
-                if (row % 2 == 0) col = 1;
-                while (col < C.BoardSize)
-                {
-                    m_Data[C.BoardSize * row + col] = Piece.White;
-                    m_WhitePos.Add(new Pos(row, col));
-                    col += 2;
-                }
-            }
-            for (ushort row = (ushort)(C.BoardSize-1); row > C.BoardSize / 2; --row)
-            {   // Placing black pieces
-                ushort col = 0;
-                if (row % 2 == 0) col = 1;
-                while (col < C.BoardSize)
-                {
-                    m_Data[C.BoardSize * row + col] = Piece.Black;
-                    m_BlackPos.Add(new Pos(row, col));
-                    col += 2;
-                }
-            }
-        }
-        /// <summary>
-        /// Creates new board and inializes it.
-        /// </summary>
+        /// <summary> Creates new board and inializes it. </summary>
         public static void Initialize(out Piece[] board)
         {
-            board = new Piece[C.BoardSize * C.BoardSize];
-            for (ushort row = 0; row < C.BoardSize / 2 - 1; ++row)
-            {   // Placing white pieces
-                ushort col = 0;
-                if (row % 2 == 0) col = 1;
-                while (col < C.BoardSize)
-                {
-                    board[C.BoardSize * row + col] = Piece.White;
-                    col += 2;
-                }
-            }
-            for (ushort row = (ushort)(C.BoardSize - 1); row > C.BoardSize / 2; --row)
-            {   // Placing black pieces
-                ushort col = 0;
-                if (row % 2 == 0) col = 1;
-                while (col < C.BoardSize)
-                {
-                    board[C.BoardSize * row + col] = Piece.Black;
-                    col += 2;
-                }
-            }
+            board = new Piece[C.ArrayLength];
+            for (uint i = 0; i < C.ArrayLength / 2 - C.BoardSize / 2; ++i)
+                board[i] = Piece.White;
+            for (uint i = C.ArrayLength / 2 + C.BoardSize / 2; i < C.ArrayLength; ++i)
+                board[i] = Piece.Black;
         }
-        /// <summary>
-        /// Rows: Bottom -> Top.
-        /// Columns: Left -> Right.
-        /// Sets type of piece at the given position.
-        /// </summary>
-        public void SetAt(Pos pos, Piece p)
-        {
-            Replace(pos, p, true);
-        }
-        /// <summary>
-        /// Rows: Bottom -> Top.
-        /// Columns: Left -> Right.
-        /// Sets type of piece at the given position.
-        /// </summary>
-        public void SetAt(ushort row, ushort col, Piece p)
-        {
-            Replace(new Pos(row, col), p, true);
-        }
-        /// <summary>
-        /// Rows: Bottom -> Top.
-        /// Columns: Left -> Right.
-        /// Sets type of piece at the given position.
-        /// </summary>
-        public void SetAt(int row, int col, Piece p)
-        {
-            ushort urow = Convert.ToUInt16(row);
-            ushort ucol = Convert.ToUInt16(col);
-            Replace(new Pos(urow, ucol), p, true);
-        }
-        /// <summary>
-        /// One operation by default.
-        /// </summary>
-        public bool Undo(ushort steps = 1)
-        {
-            for (ushort n = steps; n > 0; --n)
-            {
-                if (m_Log.Count == 0)
-                    return false;
-                Operation op = m_Log.Pop();
-                Replace(op.Position, op.Previous, false);
-            }
-            return true;
-        }
-        /// <summary>
-        /// Go back to the state just after the last ResetCounter().
-        /// </summary>
-        public void ResetState()
-        {
-            int i = m_Log.Count;
-            Undo(Convert.ToUInt16(i));
-        }
-        //------------------------------------------------------
         private struct Operation
         {
-            public Operation(Piece p, Pos pos)
+            public Operation(Piece p, uint index)
             {
-                m_Prev = p; m_Pos = pos;
+                Previous = p; Index = index;
             }
-            public Piece Previous
-            {
-                get { return m_Prev; }
-            }
-            public Pos Position
-            {
-                get { return m_Pos; }
-            }
-            Piece m_Prev;
-            Pos m_Pos;
+            public readonly Piece Previous;
+            public readonly uint Index;
         }
-        private void Replace(Pos pos, Piece pnew, bool record)
+        private void Replace(uint index, Piece pnew, bool record)
         {
-            Piece pprev = m_Data[C.BoardSize * pos.Row + pos.Col];
-            m_Data[C.BoardSize * pos.Row + pos.Col] = pnew;
+            Piece pprev = m_Data[index];
+            m_Data[index] = pnew;
 
             if (record)
-                m_Log.Push(new Operation(pprev, pos));
+                m_Log.Push(new Operation(pprev, index));
 
             if ((pprev & Piece.White) == Piece.White)
-                m_WhitePos.Remove(pos);
+                m_WhitePos.Remove(index);
             else if ((pprev & Piece.Black) == Piece.Black)
-                m_BlackPos.Remove(pos);
+                m_BlackPos.Remove(index);
 
             if ((pnew & Piece.White) == Piece.White)
-                m_WhitePos.Add(pos);
+                m_WhitePos.Add(index);
             else if ((pnew & Piece.Black) == Piece.Black)
-                m_BlackPos.Add(pos);
+                m_BlackPos.Add(index);
         }
-        //------------------------------------------------------
         Piece[]          m_Data;
-        List<Pos>        m_WhitePos;
-        List<Pos>        m_BlackPos;
+        List<uint>       m_WhitePos;
+        List<uint>       m_BlackPos;
         Stack<Operation> m_Log;
     }
     //===============================================================================
@@ -1103,7 +997,7 @@ namespace Checkers
                     else
                         m_Pc.MoveRight(p);
                     childs.Add(m_Build.Copy);
-                    m_Build.ResetState();
+                    m_Build.Reset();
                 }
                 foreach(Pos p in m_Lefties)
                 {
@@ -1113,7 +1007,7 @@ namespace Checkers
                     else
                         m_Pc.MoveLeft(p);
                     childs.Add(m_Build.Copy);
-                    m_Build.ResetState();
+                    m_Build.Reset();
                 }
                 for (int i = 0; i < m_Kings.Count; ++i)
                 {
@@ -1126,28 +1020,28 @@ namespace Checkers
                             m_Build.ResetCounter();
                             m_Pc.JumpKing(Direction.LeftDown, p);
                             childs.Add(m_Build.Copy);
-                            m_Build.ResetState();
+                            m_Build.Reset();
                         }
                         if ((dirn & Direction.LeftUp) == Direction.LeftUp)
                         {
                             m_Build.ResetCounter();
                             m_Pc.JumpKing(Direction.LeftUp, p);
                             childs.Add(m_Build.Copy);
-                            m_Build.ResetState();
+                            m_Build.Reset();
                         }
                         if ((dirn & Direction.RightDown) == Direction.RightDown)
                         {
                             m_Build.ResetCounter();
                             m_Pc.JumpKing(Direction.RightDown, p);
                             childs.Add(m_Build.Copy);
-                            m_Build.ResetState();
+                            m_Build.Reset();
                         }
                         if ((dirn & Direction.RightUp) == Direction.RightUp)
                         {
                             m_Build.ResetCounter();
                             m_Pc.JumpKing(Direction.RightUp, p);
                             childs.Add(m_Build.Copy);
-                            m_Build.ResetState();
+                            m_Build.Reset();
                         }
                     }
                     else // if (m_Move == MoveType.Move)
@@ -1157,28 +1051,28 @@ namespace Checkers
                             m_Build.ResetCounter();
                             m_Pc.MoveKing(Direction.LeftDown, p);
                             childs.Add(m_Build.Copy);
-                            m_Build.ResetState();
+                            m_Build.Reset();
                         }
                         if ((dirn & Direction.LeftUp) == Direction.LeftUp)
                         {
                             m_Build.ResetCounter();
                             m_Pc.MoveKing(Direction.LeftUp, p);
                             childs.Add(m_Build.Copy);
-                            m_Build.ResetState();
+                            m_Build.Reset();
                         }
                         if ((dirn & Direction.RightDown) == Direction.RightDown)
                         {
                             m_Build.ResetCounter();
                             m_Pc.MoveKing(Direction.RightDown, p);
                             childs.Add(m_Build.Copy);
-                            m_Build.ResetState();
+                            m_Build.Reset();
                         }
                         if ((dirn & Direction.RightUp) == Direction.RightUp)
                         {
                             m_Build.ResetCounter();
                             m_Pc.MoveKing(Direction.RightUp, p);
                             childs.Add(m_Build.Copy);
-                            m_Build.ResetState();
+                            m_Build.Reset();
                         }
                     }
                 }
@@ -1190,8 +1084,8 @@ namespace Checkers
         /// </summary>
         public double HeuristicValue(bool white_is_max_side)
         {
-            int numWhite = m_Build.WhitePositions.Length;
-            int numBlack = m_Build.BlackPositions.Length;
+            int numWhite = m_Build.NumberWhites;
+            int numBlack = m_Build.NumberBlacks;
             int numerator = (white_is_max_side) ? numWhite : numBlack;
             return (double)numerator / (numWhite + numBlack);
         }
@@ -1297,7 +1191,7 @@ namespace Checkers
     {
         public Gameplay(bool AI_is_white) : this(AI_is_white, 8, 9)
         { }
-        public Gameplay(bool AI_is_white, int boardSize, int depth)
+        public Gameplay(bool AI_is_white, uint boardSize, int depth)
         {
             C.BoardSize = boardSize;
             m_Depth = depth;

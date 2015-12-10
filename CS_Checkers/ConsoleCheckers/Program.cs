@@ -21,8 +21,8 @@ namespace Checkers
                 string[] inputs = Console.ReadLine().Split(' ');
                 if (inputs.Length < 3)
                     return;
-                int row = Convert.ToInt32(inputs[0]);
-                int col = Convert.ToInt32(inputs[1]);
+                uint row = Convert.ToUInt32(inputs[0]);
+                uint col = Convert.ToUInt32(inputs[1]);
                 Direction dirn;
                 switch (inputs[2])
                 {
@@ -47,7 +47,6 @@ namespace Checkers
                 Console.WriteLine("\nAI thinking . . . . . . . .\n");
                 cont = game.AITurn();
             } while (cont);
-
 
             Console.ReadKey();
         }

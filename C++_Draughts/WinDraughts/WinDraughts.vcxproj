@@ -151,6 +151,7 @@
     <ClInclude Include="basic_classes.h" />
     <ClInclude Include="chessboard.h" />
     <ClInclude Include="engine.h" />
+    <ClInclude Include="Engine_new.h" />
     <ClInclude Include="MainFrame.h" />
   </ItemGroup>
   <ItemGroup>
