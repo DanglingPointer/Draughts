@@ -784,14 +784,14 @@ namespace Checkers
     /// To be created only once, then takes different fields.
     /// </summary>
     //===============================================================================
-    internal class ChildGetter
+    internal class Childgetter
     {
         private enum MoveType : byte
         {
             Unset, Move, Jump
         }
         /// <summary> Initializes but doesn't configure members. </summary>
-        public ChildGetter()
+        public Childgetter()
         {
             m_Move = MoveType.Unset;        
             m_Pc = null;                    
@@ -802,7 +802,7 @@ namespace Checkers
             m_State = null;                 
         }
         /// <summary> Configures/refreshes all internal states. </summary>
-        void Configure(bool color, Piece[] newstate)
+        public void Configure(bool color, Piece[] newstate)
         {
             if (color) m_Pc = new WhitePiececontroller(newstate);
             else       m_Pc = new BlackPiececontroller(newstate);
@@ -897,7 +897,7 @@ namespace Checkers
             get { return m_State; }
         }
         /// <summary> All members must be initialized and configured. </summary>
-        public List<Piece[]> Childs
+        public List<Piece[]> ChildStates
         {
             get
             {
@@ -1044,7 +1044,7 @@ namespace Checkers
             C.BoardSize = boardSize;
             m_Depth = depth;
             m_WhiteAI = AI_is_white;
-            m_Cg = new ChildGetter();
+            m_Cg = new Childgetter();
             Aux.Initialize(out m_Board);
         }
         /// <summary> Current game state. </summary>
@@ -1052,15 +1052,13 @@ namespace Checkers
         {
             get { return m_Board; }
         }
-        /// <summary>
-        /// Updates board if possible, otherwise returns false.
-        /// </summary>
+        /// <summary> Returns 'false' if no possible moves. </summary>
         public bool AITurn()
         {
-            m_Cg.SetColor((m_WhiteAI) ? C.White : C.Black);
-            m_Cg.CurrentState = m_Board;
+            bool color = (m_WhiteAI) ? C.White : C.Black;
+            m_Cg.Configure(color, m_Board);
 
-            var children = m_Cg.Childs;
+            var children = m_Cg.ChildStates;
             if (children.Count == 0)
                 return false;
 
@@ -1075,13 +1073,11 @@ namespace Checkers
             m_Board = children[bestChildInd];
             return true;
         }
-        /// <summary>
-        /// Returns 'false' if invalid arguments (impossible to perform the move).
-        /// </summary>
-        public bool PlayerTurn(Position pos, Direction dirn) // Ugly method
-        {   
-            m_Cg.SetColor((m_WhiteAI) ? C.Black : C.White);
-            m_Cg.CurrentState = m_Board;
+        /// <summary> Returns 'false' if impossible to perform the move </summary>
+        public bool PlayerTurn(Position pos, Direction dirn)
+        {
+            bool color = (m_WhiteAI) ? C.Black : C.White;
+            m_Cg.Configure(color, m_Board);
             
             if ((m_Board[pos] & Piece.King) == Piece.King)
             {
@@ -1119,17 +1115,18 @@ namespace Checkers
         }
         private double AlphaBetaPruning(Piece[] node, int depth, double alpha = 0.0, double beta = 1.0, bool aiturn = false)
         {
+            bool color;
             if (m_WhiteAI)
-                m_Cg.SetColor((aiturn) ? C.White : C.Black);
+                color = (aiturn) ? C.White : C.Black;
             else
-                m_Cg.SetColor((aiturn) ? C.Black : C.White);
-            m_Cg.CurrentState = node;
+                color = (aiturn) ? C.Black : C.White;
+            m_Cg.Configure(color, node);
 
             double val = m_Cg.HeuristicValue(m_WhiteAI);
-            if ((m_Depth != -1 && depth == 0) || val == 0.0 || val == 1.0)
+            if (depth == 0 || val == 0.0 || val == 1.0)
                 return val;
 
-            List<Piece[]> children = m_Cg.Childs;
+            List<Piece[]> children = m_Cg.ChildStates;
             if (aiturn)
             {
                 val = 0.0;
@@ -1156,7 +1153,7 @@ namespace Checkers
         }
         int         m_Depth;
         bool        m_WhiteAI;
-        ChildGetter m_Cg;
+        Childgetter m_Cg;
         Piece[]     m_Board;
     }
 }
