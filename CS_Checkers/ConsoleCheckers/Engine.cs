@@ -10,17 +10,17 @@ namespace Checkers
     internal static class C
     {
         /// <summary> Size of the board's side </summary>
-        public static uint BoardSize
+        public static int BoardSize
         {
             get { return m_Size; }
             set { m_Size = value; m_Length = value * value / 2; }
         }
-        public static uint ArrayLength
+        public static int ArrayLength
         {
             get { return m_Length; }
         }
-        private static uint m_Size = 8;
-        private static uint m_Length = 32;
+        private static int m_Size = 8;
+        private static int m_Length = 32;
         /// <summary> Substitution for #define WHITE true </summary>
         public const bool White = true;
         /// <summary> Substitution for #define BLACK false </summary>
@@ -49,32 +49,33 @@ namespace Checkers
     }
     public struct Position
     {
-        public Position(uint row, uint col)
+        public Position(int row, int col)
         {
-            if (row >= C.BoardSize || col >= C.BoardSize)
-                throw new ArgumentOutOfRangeException();
+            if (row < 0 || row >= C.BoardSize || 
+                col < 0 || col >= C.BoardSize)
+                throw new ArgumentOutOfRangeException("Invalid position");
             Row = row;
             Col = col;
         }
-        public readonly uint Row;
-        public readonly uint Col;
+        public readonly int Row;
+        public readonly int Col;
         /// <summary> Returns new position with given offset from 'this'. </summary>
         public Position Offset(int rowoffset, int coloffset)
         {
-            int row = Convert.ToInt32(Row) + rowoffset;
-            int col = Convert.ToInt32(Col) + coloffset;
-            return new Position(Convert.ToUInt32(row), Convert.ToUInt32(col));
+            int row = Row + rowoffset;
+            int col = Col + coloffset;
+            return new Position(row, col);
         }
         /// <summary> Converts position to array index </summary>
-        public static implicit operator uint(Position p)
+        public static implicit operator int(Position p)
         {
             return p.Row * (C.BoardSize / 2) + p.Col / 2;
         }
         /// <summary> Converts array index to position </summary>
-        public static implicit operator Position(uint index)
+        public static implicit operator Position(int index)
         {
-            uint row = index / (C.BoardSize / 2);
-            uint col = (index % (C.BoardSize / 2)) * 2 + row % 2;
+            int row = index / (C.BoardSize / 2);
+            int col = (index % (C.BoardSize / 2)) * 2 + row % 2;
             return new Position(row, col);
         }
     }
@@ -104,9 +105,9 @@ namespace Checkers
         public static void Initialize(out Piece[] board)
         {
             board = new Piece[C.ArrayLength];
-            for (uint i = 0; i < C.ArrayLength / 2 - C.BoardSize / 2; ++i)
+            for (int i = 0; i < C.ArrayLength / 2 - C.BoardSize / 2; ++i)
                 board[i] = Piece.White;
-            for (uint i = C.ArrayLength / 2 + C.BoardSize / 2; i < C.ArrayLength; ++i)
+            for (int i = C.ArrayLength / 2 + C.BoardSize / 2; i < C.ArrayLength; ++i)
                 board[i] = Piece.Black;
         }
         public static Piece[] Copy(Piece[] original)
@@ -120,9 +121,9 @@ namespace Checkers
         public static void Print(Piece[] data) // NOT CONVERTED
         {
             Console.WriteLine("----------------");
-            for (uint row = C.BoardSize-1; row >= 0; --row)
+            for (int row = C.BoardSize-1; row >= 0; --row)
             {
-                for (uint col = 0; col < C.BoardSize; ++col)
+                for (int col = 0; col < C.BoardSize; ++col)
                 {
                     Piece p = data[C.BoardSize * row + col];
                     if ((p & Piece.White) == Piece.White)
@@ -233,7 +234,7 @@ namespace Checkers
             get
             {
                 var allwhite = new List<Position>();
-                for (uint i = 0; i < m_Board.Length; ++i)
+                for (int i = 0; i < m_Board.Length; ++i)
                     if ((m_Board[i] & Piece.White) == Piece.White)
                         allwhite.Add(i);
                 return allwhite;
@@ -516,7 +517,7 @@ namespace Checkers
             get
             {
                 var allblack = new List<Position>();
-                for (uint i = 0; i < m_Board.Length; ++i)
+                for (int i = 0; i < m_Board.Length; ++i)
                     if ((m_Board[i] & Piece.White) == Piece.White)
                         allblack.Add(i);
                 return allblack;
@@ -1039,7 +1040,7 @@ namespace Checkers
     {
         public Gameplay(bool AI_is_white) : this(AI_is_white, 8, 9)
         { }
-        public Gameplay(bool AI_is_white, uint boardSize, int depth)
+        public Gameplay(bool AI_is_white, int boardSize, int depth)
         {
             C.BoardSize = boardSize;
             m_Depth = depth;
