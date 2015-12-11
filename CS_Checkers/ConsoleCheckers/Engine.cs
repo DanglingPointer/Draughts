@@ -6,15 +6,35 @@ using System.Collections.Generic;
 
 namespace Checkers
 {
+    [Flags]
+    public enum Piece : byte
+    {
+        Empty = 0x0,
+        White = 0x1,
+        Black = 0x2,
+        King = 0x4
+    }
+    [Flags]
+    public enum Direction : byte
+    {
+        None = 0x0,
+        RightUp = 0x1,
+        LeftUp = 0x2,
+        RightDown = 0x4,
+        LeftDown = 0x8
+    }
     //===============================================================================
+    /// <summary>
+    /// Constants and global variables.
+    /// </summary>
     internal static class C
     {
-        /// <summary> Size of the board's side </summary>
+        /// <summary> Size of the board's side, always even number </summary>
         public static int BoardSize
         {
             get { return m_Size; }
             set
-            {
+            {   // enforced to be even
                 m_Size = value + value % 2;
                 m_Length = m_Size * m_Size / 2;
             }
@@ -30,27 +50,10 @@ namespace Checkers
         /// <summary> Substitution for #define BLACK false </summary>
         public const bool Black = false;
     }
-    [Flags]
-    public enum Piece : byte
-    {
-        Empty = 0x0,
-        White = 0x1,
-        Black = 0x2,
-        King  = 0x4
-    }
-    [Flags]
-    public enum Direction : byte
-    {
-        None        = 0x0,
-        RightUp     = 0x1,
-        LeftUp      = 0x2,
-        RightDown   = 0x4,
-        LeftDown    = 0x8
-    }
     /// <summary>
     /// Immutable, can be converted from/to array index
     /// </summary>
-    public struct Position
+    internal struct Position
     {
         public Position(int row, int col)
         {
@@ -75,14 +78,13 @@ namespace Checkers
             return p.Row * (C.BoardSize / 2) + p.Col / 2;
         }
         /// <summary> Converts array index to position </summary>
-        public static implicit operator Position(int index)
+        public static explicit operator Position(int index)
         {
             int row = index / (C.BoardSize / 2);
             int col = (index % (C.BoardSize / 2)) * 2 + row % 2;
             return new Position(row, col);
         }
     }
-    //===============================================================================
     internal static class Aux
     {
         public static T Max<T>(params T[] args) where T : IComparable<T>
@@ -215,7 +217,7 @@ namespace Checkers
                 var allwhite = new List<Position>();
                 for (int i = 0; i < m_Board.Length; ++i)
                     if ((m_Board[i] & Piece.White) == Piece.White)
-                        allwhite.Add(i);
+                        allwhite.Add((Position)i);
                 return allwhite;
             }
         }
@@ -498,7 +500,7 @@ namespace Checkers
                 var allblack = new List<Position>();
                 for (int i = 0; i < m_Board.Length; ++i)
                     if ((m_Board[i] & Piece.Black) == Piece.Black)
-                        allblack.Add(i);
+                        allblack.Add((Position)i);
                 return allblack;
             }
         }
@@ -1017,21 +1019,24 @@ namespace Checkers
     }
     //===============================================================================
     /// <summary>
-    /// The game
+    /// The game, the only class accessible from outside (alongside the enums).
     /// </summary>
     //===============================================================================
     public class Gameplay
     {
-        /// <summary> Depth should be an odd number </summary>
-        public Gameplay(bool AI_is_white, int depth, int boardSize)
+        /// <summary> 
+        /// Depth should be an odd number.
+        /// 'boardSize' is incremented if odd number.
+        /// </summary>
+        public Gameplay(bool player_is_white, int depth, int boardSize)
         {
             C.BoardSize = boardSize;
             m_Depth = depth;
-            m_WhiteAI = AI_is_white;
+            m_WhiteAI = !player_is_white;
             m_Cg = new Childgetter();
             Aux.Initialize(out m_Board);
         }
-        public Gameplay(bool AI_is_white) : this(AI_is_white, 9, 8)
+        public Gameplay(bool player_is_white) : this(player_is_white, 9, 8)
         { }
         public Piece GetPieceAt(int row, int col)
         {
@@ -1062,9 +1067,13 @@ namespace Checkers
             m_Board = children[bestChildInd];
             return true;
         }
-        /// <summary> Returns 'false' if impossible to perform the move </summary>
-        public bool PlayerTurn(Position pos, Direction dirn)
+        /// <summary> 
+        /// Returns 'false' if impossible to perform the move.
+        /// 'row' and 'col' between 0 and boardSize-1.
+        /// </summary>
+        public bool PlayerTurn(int row, int col, Direction dirn)
         {
+            Position pos = new Position(row, col);
             bool color = (m_WhiteAI) ? C.Black : C.White;
             m_Cg.Configure(color, m_Board);
             
