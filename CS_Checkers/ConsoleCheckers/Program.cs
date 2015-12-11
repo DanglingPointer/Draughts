@@ -16,13 +16,13 @@ namespace Checkers
             Console.WriteLine("Direction:\nru = right up\nrd = right down\nlu = left up\nld = left down\n");
             do
             {
-                Aux.Print(game.Board);
+                Aux.Print(game);
                 Console.WriteLine("Enter [row col direction]");
                 string[] inputs = Console.ReadLine().Split(' ');
                 if (inputs.Length < 3)
                     return;
-                uint row = Convert.ToUInt32(inputs[0]);
-                uint col = Convert.ToUInt32(inputs[1]);
+                int row = Convert.ToInt32(inputs[0]);
+                int col = Convert.ToInt32(inputs[1]);
                 Direction dirn;
                 switch (inputs[2])
                 {
@@ -43,7 +43,7 @@ namespace Checkers
                         break;
                 }
                 game.PlayerTurn(new Position(row, col), dirn);
-                Aux.Print(game.Board);
+                Aux.Print(game);
                 Console.WriteLine("\nAI thinking . . . . . . . .\n");
                 cont = game.AITurn();
             } while (cont);

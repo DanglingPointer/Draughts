@@ -13,7 +13,11 @@ namespace Checkers
         public static int BoardSize
         {
             get { return m_Size; }
-            set { m_Size = value; m_Length = value * value / 2; }
+            set
+            {
+                m_Size = value + value % 2;
+                m_Length = m_Size * m_Size / 2;
+            }
         }
         public static int ArrayLength
         {
@@ -117,14 +121,14 @@ namespace Checkers
             return copy;
         }
         [Conditional("CONSOLE")]
-        public static void Print(Piece[] data) // NOT CONVERTED
+        public static void Print(Gameplay game)
         {
             Console.WriteLine("----------------");
             for (int row = C.BoardSize-1; row >= 0; --row)
             {
                 for (int col = 0; col < C.BoardSize; ++col)
                 {
-                    Piece p = data[C.BoardSize * row + col];
+                    Piece p = game.GetPieceAt(row, col);
                     if ((p & Piece.White) == Piece.White)
                     {
                         if ((p & Piece.King) == Piece.King)
@@ -493,7 +497,7 @@ namespace Checkers
             {
                 var allblack = new List<Position>();
                 for (int i = 0; i < m_Board.Length; ++i)
-                    if ((m_Board[i] & Piece.White) == Piece.White)
+                    if ((m_Board[i] & Piece.Black) == Piece.Black)
                         allblack.Add(i);
                 return allblack;
             }
@@ -1018,7 +1022,8 @@ namespace Checkers
     //===============================================================================
     public class Gameplay
     {
-        public Gameplay(bool AI_is_white, int boardSize, int depth)
+        /// <summary> Depth should be an odd number </summary>
+        public Gameplay(bool AI_is_white, int depth, int boardSize)
         {
             C.BoardSize = boardSize;
             m_Depth = depth;
@@ -1026,17 +1031,20 @@ namespace Checkers
             m_Cg = new Childgetter();
             Aux.Initialize(out m_Board);
         }
-        public Gameplay(bool AI_is_white) : this(AI_is_white, 8, 9)
+        public Gameplay(bool AI_is_white) : this(AI_is_white, 9, 8)
         { }
-        /// <summary> Current game state. </summary>
-        public Piece[] Board
+        public Piece GetPieceAt(int row, int col)
         {
-            get { return m_Board; }
+            if ((row + col) % 2 == 1)
+                return Piece.Empty;
+            else
+                return m_Board[new Position(row, col)];
         }
         /// <summary> Returns 'false' if no possible moves. </summary>
         public bool AITurn()
         {
             bool color = (m_WhiteAI) ? C.White : C.Black;
+
             m_Cg.Configure(color, m_Board);
 
             var children = m_Cg.ChildStates;
