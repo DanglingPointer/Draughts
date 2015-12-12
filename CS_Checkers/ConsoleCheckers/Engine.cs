@@ -153,6 +153,41 @@ namespace Checkers
             }
             Console.WriteLine("----------------");
         }
+        [Conditional("DEBUG")]
+        public static void Print(Piece[] board)
+        {
+            Console.WriteLine("----------------");
+            for (int row = C.BoardSize - 1; row >= 0; --row)
+            {
+                for (int col = 0; col < C.BoardSize; ++col)
+                {
+                    Piece p;
+                    if ((row + col) % 2 == 1)
+                        p = Piece.Empty;
+                    else
+                        p = board[new Position(row, col)];
+
+                    if ((p & Piece.White) == Piece.White)
+                    {
+                        if ((p & Piece.King) == Piece.King)
+                            Console.Write("E ");
+                        else
+                            Console.Write("e ");
+                    }
+                    else if ((p & Piece.Black) == Piece.Black)
+                    {
+                        if ((p & Piece.King) == Piece.King)
+                            Console.Write("O ");
+                        else
+                            Console.Write("o ");
+                    }
+                    else
+                        Console.Write("- ");
+                }
+                Console.WriteLine();
+            }
+            Console.WriteLine("----------------");
+        }
     }
     //===============================================================================
     /// <summary>
@@ -248,7 +283,7 @@ namespace Checkers
                 else if (CanJumpLeft(newpos))
                     numleftjump = MaxJump(newpos.Offset(2, -2)) + 1;
 
-                if (numrightjump != 0 || numrightjump != 0)
+                if (numrightjump != 0 || numleftjump != 0)
                 {   // Multiple jumps
                     if (numrightjump > numleftjump)
                         JumpRight(newpos);
@@ -531,7 +566,7 @@ namespace Checkers
                 else if (CanJumpLeft(newpos))
                     numleftjump = MaxJump(newpos.Offset(-2, -2)) + 1;
 
-                if (numrightjump != 0 || numrightjump != 0)
+                if (numrightjump != 0 || numleftjump != 0)
                 {   // Multiple jumps
                     if (numrightjump > numleftjump)
                         JumpRight(newpos);
@@ -874,11 +909,6 @@ namespace Checkers
                 }
             }
             m_Move = (jump) ? MoveType.Jump : MoveType.Move;
-        }
-        /// <summary> Current board </summary>
-        public Piece[] CurrentState
-        {
-            get { return m_State; }
         }
         /// <summary> All members must be configured. </summary>
         public List<Piece[]> ChildStates
