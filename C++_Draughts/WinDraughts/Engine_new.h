@@ -46,7 +46,7 @@ namespace Draughts
     template<typename T> inline T Max(const std::initializer_list<T>& list)
     {
         T max = *(list.begin());
-        for (T *p = list.begin(); p != list.end(); ++p)
+        for (const T *p = list.begin(); p != list.end(); ++p)
             if ((*p) > max)
                 max = (*p);
         return max;
@@ -54,7 +54,7 @@ namespace Draughts
     template<typename T> inline T Min(const std::initializer_list<T>& list)
     {
         T min = *(list.begin());
-        for (T *p = list.begin(); p != list.end(); ++p)
+        for (const T *p = list.begin(); p != list.end(); ++p)
             if ((*p) < min)
                 min = (*p);
         return min;
@@ -782,7 +782,7 @@ namespace Draughts
                     m_pPc->MoveLeft(*it);
                 childs.push_back(pchild);
             }
-            for (int i = 0; i < m_Kings.size(); ++i)
+            for (unsigned int i = 0; i < m_Kings.size(); ++i)
             {
                 Direction dirn = m_Kingdirns[i];
                 Position p = m_Kings[i];
@@ -940,7 +940,7 @@ namespace Draughts
 
             if (m_pBoard[pos] & Piece::King)
             {
-                Direction whereCanGo = (m_Cg.Moving) ? (m_Cg.Controller())->CanMoveKing(pos) : (m_Cg.Controller())->CanJumpKing(pos);
+                Direction whereCanGo = (m_Cg.Moving()) ? (m_Cg.Controller())->CanMoveKing(pos) : (m_Cg.Controller())->CanJumpKing(pos);
                 if ((whereCanGo & dirn) == dirn)
                 {
                     if (m_Cg.Moving()) 
@@ -988,7 +988,7 @@ namespace Draughts
             if (depth == 0 || val == 0.0 || val == 1.0)
                 return val;
 
-            std::vector<Piece*> children = m_Cg.ChildStates;
+            std::vector<Piece*> children = m_Cg.ChildStates();
             if (aiturn)
             {
                 val = 0.0;
