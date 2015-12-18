@@ -29,7 +29,13 @@ namespace Checkers
     /// </summary>
     internal static class C
     {
-        /// <summary> Size of the board's side, always even number </summary>
+        /// <summary> Substitution for #define WHITE true </summary>
+        public const bool White = true;
+        /// <summary> Substitution for #define BLACK false </summary>
+        public const bool Black = false;
+        /// <summary> 
+        /// Size of the board's side, always even. Updates ArrayLength when set.
+        /// </summary>
         public static int BoardSize
         {
             get { return m_Size; }
@@ -45,17 +51,13 @@ namespace Checkers
         }
         private static int m_Size;
         private static int m_Length;
-        /// <summary> Substitution for #define WHITE true </summary>
-        public const bool White = true;
-        /// <summary> Substitution for #define BLACK false </summary>
-        public const bool Black = false;
     }
     /// <summary>
     /// Immutable, can be converted from/to array index
     /// </summary>
     internal struct Position
     {
-        public Position(int row, int col)
+        public Position(int row, int col) : this()
         {
             if (row < 0 || row >= C.BoardSize || 
                 col < 0 || col >= C.BoardSize)
@@ -130,7 +132,7 @@ namespace Checkers
             {
                 for (int col = 0; col < C.BoardSize; ++col)
                 {
-                    Piece p = game.GetPieceAt(row, col);
+                    Piece p = game[row, col];
                     if ((p & Piece.White) == Piece.White)
                     {
                         if ((p & Piece.King) == Piece.King)
@@ -1058,26 +1060,56 @@ namespace Checkers
         /// Depth should be an odd number.
         /// 'boardSize' is incremented if odd number.
         /// </summary>
-        public Gameplay(bool player_is_white, int depth, int boardSize)
+        public Gameplay(int depth, int boardSize)
         {
             C.BoardSize = boardSize;
             m_Depth = depth;
-            m_WhiteAI = !player_is_white;
             m_Cg = new Childgetter();
             Aux.Initialize(out m_Board);
+            m_Initialized = false;
         }
-        public Gameplay(bool player_is_white) : this(player_is_white, 9, 8)
+        public Gameplay() : this(9, 8)
         { }
-        public Piece GetPieceAt(int row, int col)
+        /// <summary> 
+        /// Player side. Can be set only once and accessed only when set.
+        /// </summary>
+        public bool WhitePlayer
         {
-            if ((row + col) % 2 == 1)
-                return Piece.Empty;
-            else
-                return m_Board[new Position(row, col)];
+            get
+            {
+                if (m_Initialized)
+                    return !m_WhiteAI;
+                else
+                    throw new InvalidOperationException();
+            }
+            set
+            {
+                if (!m_Initialized)
+                {
+                    m_Initialized = true;
+                    m_WhiteAI = !value;
+                }
+                else
+                    throw new InvalidOperationException();
+            }
+        }
+        /// <summary> Accessing piece at the given position. </summary>
+        public Piece this[int row, int col]
+        {
+            get
+            {
+                if ((row + col) % 2 == 1)
+                    return Piece.Empty;
+                else
+                    return m_Board[new Position(row, col)];
+            }
         }
         /// <summary> Returns 'false' if no possible moves. </summary>
         public bool AITurn()
         {
+            if (!m_Initialized)
+                throw new InvalidOperationException();
+
             bool color = (m_WhiteAI) ? C.White : C.Black;
 
             m_Cg.Configure(color, m_Board);
@@ -1103,24 +1135,30 @@ namespace Checkers
         /// </summary>
         public bool PlayerTurn(int row, int col, Direction dirn)
         {
+            if (!m_Initialized)
+                throw new InvalidOperationException();
+
             Position pos = new Position(row, col);
             bool color = (m_WhiteAI) ? C.Black : C.White;
             m_Cg.Configure(color, m_Board);
-            
+            bool jumping = m_Cg.Jumping;
+
             if ((m_Board[pos] & Piece.King) == Piece.King)
             {
-                Direction whereCanGo = (m_Cg.Moving) ? m_Cg.Controller.CanMoveKing(pos) : m_Cg.Controller.CanJumpKing(pos);
+                Direction whereCanGo = (jumping) ? m_Cg.Controller.CanJumpKing(pos) : m_Cg.Controller.CanMoveKing(pos);
                 if ((whereCanGo & dirn) == dirn)
                 {
-                    if (m_Cg.Moving) m_Cg.Controller.MoveKing(dirn, pos);
-                    else m_Cg.Controller.JumpKing(dirn, pos);
+                    if (jumping)
+                        m_Cg.Controller.JumpKing(dirn, pos);
+                    else
+                        m_Cg.Controller.MoveKing(dirn, pos);
                 }
                 else
                     return false;
             }
             else // not a king
             {
-                if (m_Cg.Jumping)
+                if (jumping)
                 {
                     if ((dirn & (Direction.RightUp | Direction.RightDown)) == dirn && m_Cg.Controller.CanJumpRight(pos))
                         m_Cg.Controller.JumpRight(pos);
@@ -1180,8 +1218,9 @@ namespace Checkers
             return val;
         }
         int         m_Depth;
-        bool        m_WhiteAI;
         Childgetter m_Cg;
         Piece[]     m_Board;
+        bool        m_WhiteAI;
+        bool        m_Initialized;
     }
 }
