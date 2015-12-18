@@ -59,9 +59,11 @@ namespace Checkers
     {
         public Position(int row, int col) : this()
         {
+        #if DEBUG
             if (row < 0 || row >= C.BoardSize || 
                 col < 0 || col >= C.BoardSize)
                 throw new ArgumentOutOfRangeException("Invalid position");
+        #endif
             Row = row;
             Col = col;
         }
@@ -814,10 +816,10 @@ namespace Checkers
         {
             m_Move = MoveType.Unset;        
             m_Pc = null;                    
-            m_Righties = null;              
-            m_Lefties = null;               
-            m_Kings = null;                 
-            m_Kingdirns = null;             
+            m_Righties = new List<Position>();
+            m_Lefties = new List<Position>();
+            m_Kings = new List<Position>();
+            m_Kingdirns = new List<Direction>();
             m_State = null;                 
         }
         /// <summary> Configures/refreshes all internal states. </summary>
@@ -829,26 +831,7 @@ namespace Checkers
                 m_Pc = new BlackPiececontroller(newstate);
 
             m_State = newstate;
-
-            if (m_Righties == null)
-                m_Righties = new List<Position>();
-            else
-                m_Righties.Clear();
-
-            if (m_Lefties == null)
-                m_Lefties = new List<Position>();
-            else
-                m_Lefties.Clear();
-
-            if (m_Kings == null)
-                m_Kings = new List<Position>();
-            else
-                m_Kings.Clear();
-
-            if (m_Kingdirns == null)
-                m_Kingdirns = new List<Direction>();
-            else
-                m_Kingdirns.Clear();
+            ClearLists();
 
             List<Position> allPositions = m_Pc.Positions;
 
@@ -862,10 +845,7 @@ namespace Checkers
                     {
                         if (!jump)
                         {
-                            m_Kings.Clear();
-                            m_Kingdirns.Clear();
-                            m_Righties.Clear();
-                            m_Lefties.Clear();
+                            ClearLists();
                             jump = true;
                         }
                         m_Kings.Add(p);
@@ -883,10 +863,7 @@ namespace Checkers
                     {
                         if (!jump)
                         {
-                            m_Righties.Clear();
-                            m_Lefties.Clear();
-                            m_Kings.Clear();
-                            m_Kingdirns.Clear();
+                            ClearLists();
                             jump = true;
                         }
                         m_Righties.Add(p);
@@ -895,10 +872,7 @@ namespace Checkers
                     {
                         if (!jump)
                         {
-                            m_Lefties.Clear();
-                            m_Righties.Clear();
-                            m_Kings.Clear();
-                            m_Kingdirns.Clear();
+                            ClearLists();
                             jump = true;
                         }
                         m_Lefties.Add(p);
@@ -1041,6 +1015,13 @@ namespace Checkers
         {
             get { return m_Pc; }
         }
+        private void ClearLists()
+        {
+            m_Lefties.Clear();
+            m_Righties.Clear();
+            m_Kings.Clear();
+            m_Kingdirns.Clear();
+        }
         Piece[] m_State;
         MoveType m_Move;
         IPiececontroller m_Pc;
@@ -1139,9 +1120,13 @@ namespace Checkers
                 throw new InvalidOperationException();
 
             Position pos = new Position(row, col);
-            bool color = (m_WhiteAI) ? C.Black : C.White;
-            m_Cg.Configure(color, m_Board);
+            bool playerColor = (m_WhiteAI) ? C.Black : C.White;
+            m_Cg.Configure(playerColor, m_Board);
             bool jumping = m_Cg.Jumping;
+
+            if ((playerColor == C.White && (m_Board[pos] & Piece.Black) == Piece.Black) ||
+                (playerColor == C.Black && (m_Board[pos] & Piece.White) == Piece.White))
+                return false;
 
             if ((m_Board[pos] & Piece.King) == Piece.King)
             {
