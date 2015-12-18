@@ -1,8 +1,25 @@
 // DraughtsLib.cpp : Defines the exported functions for the DLL application.
 //
-
-#include "stdafx.h"
+#include"DraughtsEngine.h"
 #include "DraughtsLib.h"
+
+// DLL entry point
+//
+BOOL APIENTRY DllMain(HMODULE hModule,
+                      DWORD  ul_reason_for_call,
+                      LPVOID lpReserved
+                      )
+{
+    switch (ul_reason_for_call)
+    {
+    case DLL_PROCESS_ATTACH:
+    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_DETACH:
+    case DLL_PROCESS_DETACH:
+        break;
+    }
+    return TRUE;
+}
 
 DRAUGHTSLIB_API Gameplay *CreateGameplay(bool player_is_white, int depth)
 {
