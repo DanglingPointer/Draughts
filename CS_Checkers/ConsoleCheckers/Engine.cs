@@ -1061,7 +1061,7 @@ namespace Checkers
                 if (m_Initialized)
                     return !m_WhiteAI;
                 else
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException("Player color not initialized");
             }
             set
             {
@@ -1071,7 +1071,7 @@ namespace Checkers
                     m_WhiteAI = !value;
                 }
                 else
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException("Player color already initialized");
             }
         }
         /// <summary> Accessing piece at the given position. </summary>

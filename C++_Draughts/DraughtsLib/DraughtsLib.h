@@ -16,20 +16,47 @@
 # define DRAUGHTSLIB_API __declspec(dllimport)
 #endif
 
+#ifndef DRAUGHTS_TYPES
+#define DRAUGHTS_TYPES
+
+typedef unsigned char byte;
+typedef char sbyte;
+typedef enum _Piece : byte
+{
+    Empty = 0x0,
+    White = 0x1,
+    Black = 0x2,
+    King = 0x4
+} Piece;
+typedef enum _Direction : byte
+{
+    None = 0x0,
+    RightUp = 0x1,
+    LeftUp = 0x2,
+    RightDown = 0x4,
+    LeftDown = 0x8
+} Direction;
+
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-    DRAUGHTSLIB_API Gameplay *CreateGameplay(bool player_is_white, int depth);
+    DRAUGHTSLIB_API void CreateGameplay(int depth);
+
+    DRAUGHTSLIB_API void SetPlayerColro(BOOL white);
     
-    DRAUGHTSLIB_API Piece GetPieceAt(Gameplay *gp, byte row, byte col);
+    DRAUGHTSLIB_API Piece GetPieceAt(byte row, byte col);
     
-    DRAUGHTSLIB_API bool AITurn(Gameplay *gp);
+    DRAUGHTSLIB_API BOOL AITurn();
     
-    DRAUGHTSLIB_API bool PlayerTurn(Gameplay *gp, int row, int col, Direction dirn);
+    DRAUGHTSLIB_API BOOL PlayerTurn(int row, int col, Direction dirn);
     
-    DRAUGHTSLIB_API void Dispose(Gameplay *gp);
+    DRAUGHTSLIB_API void Dispose();
+
+    DRAUGHTSLIB_API void Print();
 
 #ifdef __cplusplus
 }

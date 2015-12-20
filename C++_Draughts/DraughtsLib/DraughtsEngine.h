@@ -4,29 +4,34 @@
 #include<cstring>
 #include<initializer_list>
 #include<stdexcept>
+#include<ostream>
 
 #define BOARD_SIZE 8
 #define ARRAY_SIZE (BOARD_SIZE*BOARD_SIZE / 2)
 #define WHITE true
 #define BLACK false
 
+#ifndef DRAUGHTS_TYPES
+#define DRAUGHTS_TYPES
+
 typedef unsigned char byte;
 typedef char sbyte;
-enum Piece : byte
-{
+typedef enum _Piece : byte{
     Empty = 0x0,
     White = 0x1,
     Black = 0x2,
     King = 0x4
-};
-enum Direction : byte
-{
+} Piece;
+typedef enum _Direction : byte{
     None = 0x0,
     RightUp = 0x1,
     LeftUp = 0x2,
     RightDown = 0x4,
     LeftDown = 0x8
-};
+} Direction;
+
+#endif
+
 template<typename T> inline T operator| (T a, T b)
 {
     return (T)((int)a | (int)b);
@@ -63,9 +68,9 @@ template<typename T> inline T Min(const std::initializer_list<T>& list)
 Piece *Initialize()
 {
     Piece *pboard = new Piece[ARRAY_SIZE]{};
-    for (int i = 0; i < ARRAY_SIZE / 2 - ARRAY_SIZE / 2; ++i)
+    for (int i = 0; i < (ARRAY_SIZE / 2 - BOARD_SIZE / 2); ++i)
         pboard[i] = Piece::White;
-    for (int i = (ARRAY_SIZE / 2 + ARRAY_SIZE / 2); i < ARRAY_SIZE; ++i)
+    for (int i = (ARRAY_SIZE / 2 + BOARD_SIZE / 2); i < ARRAY_SIZE; ++i)
         pboard[i] = Piece::Black;
     return pboard;
 }
@@ -80,20 +85,20 @@ Piece *CreateCopyOf(const Piece *poriginal)
 class Position
 {
 public:
-    Position(byte row, byte col) :Row(row), Col(col)
+    Position(sbyte row, sbyte col) :Row(row), Col(col)
     { }
-    Position(byte index) :Row(index / (BOARD_SIZE / 2)), Col((index % (BOARD_SIZE / 2)) * 2 + Row % 2)
+    Position(sbyte index) :Row(index / (BOARD_SIZE / 2)), Col((index % (BOARD_SIZE / 2)) * 2 + Row % 2)
     { }
     Position Offset(sbyte rowoffset, sbyte coloffset) const
     {
         return Position(Row + rowoffset, Col + coloffset);
     }
-    operator byte() const
+    operator sbyte() const
     {
         return Row * (BOARD_SIZE / 2) + Col / 2;
     }
-    const byte Row;
-    const byte Col;
+    const sbyte Row;
+    const sbyte Col;
 };
 __interface IPiececontroller
 {
@@ -134,12 +139,12 @@ public:
     std::list<Position> GetPositions() const
     {
         std::list<Position> posns;
-        for (byte i = 0; i < ARRAY_SIZE; i++)
+        for (sbyte i = 0; i < ARRAY_SIZE; i++)
             if (m_pBoard[i] & Piece::White)
                 posns.push_back(Position(i));
         return posns;
     }
-    bool CanJumpRight(const Position& pos) const    // converted
+    bool CanJumpRight(const Position& pos) const
     {
         if (pos.Col > BOARD_SIZE - 3 || pos.Row > BOARD_SIZE - 3)
             return false;
@@ -148,7 +153,7 @@ public:
             return true;
         return false;
     }
-    void JumpRight(const Position& pos) const   // converted
+    void JumpRight(const Position& pos) const
     {
         Piece mypiece = m_pBoard[pos];
         m_pBoard[pos] = Piece::Empty;
@@ -175,7 +180,7 @@ public:
             }
         }
     }
-    bool CanJumpLeft(const Position& pos) const // converted
+    bool CanJumpLeft(const Position& pos) const
     {
         if (pos.Col < 2 || pos.Row > BOARD_SIZE - 3)
             return false;
@@ -184,7 +189,7 @@ public:
             return true;
         return false;
     }
-    void JumpLeft(const Position& pos) const    // converted
+    void JumpLeft(const Position& pos) const
     {
         Piece mypiece = m_pBoard[pos];
         m_pBoard[pos] = Piece::Empty;
@@ -211,7 +216,7 @@ public:
             }
         }
     }
-    Direction CanJumpKing(const Position& pos) const    // converted
+    Direction CanJumpKing(const Position& pos) const
     {
         Direction where = Direction::None;
         if (pos.Row < BOARD_SIZE - 2)
@@ -238,7 +243,7 @@ public:
         }
         return where;
     }
-    void JumpKing(Direction dirn, const Position& pos) const    // converted
+    void JumpKing(Direction dirn, const Position& pos) const
     {
         Position *pnewpos;
         Piece mypiece = m_pBoard[pos];
@@ -269,7 +274,7 @@ public:
         m_pBoard[*pnewpos] = mypiece;
 
 
-        byte rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
+        sbyte rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
         Direction newdirn = CanJumpKing(*pnewpos);
         if ((newdirn & Direction::RightUp) == Direction::RightUp)
             rightUp = MaxJumpKing(Position(pnewpos->Row + 2, pnewpos->Col + 2), Direction::LeftDown) + 1;
@@ -293,7 +298,7 @@ public:
         }
         delete pnewpos;
     }
-    bool CanMoveRight(const Position& pos) const    // converted
+    bool CanMoveRight(const Position& pos) const
     {
         if (pos.Col > BOARD_SIZE - 2 || pos.Row > BOARD_SIZE - 2)
             return false;
@@ -301,7 +306,7 @@ public:
             return true;
         return false;
     }
-    void MoveRight(const Position& pos) const   // converted
+    void MoveRight(const Position& pos) const
     {
         Piece mypiece = m_pBoard[pos];
         m_pBoard[pos] = Piece::Empty;
@@ -310,7 +315,7 @@ public:
         else
             m_pBoard[pos.Offset(1, 1)] = mypiece;
     }
-    bool CanMoveLeft(const Position& pos) const // converted
+    bool CanMoveLeft(const Position& pos) const
     {
         if (pos.Col < 1 || pos.Row > BOARD_SIZE - 2)
             return false;
@@ -318,7 +323,7 @@ public:
             return true;
         return false;
     }
-    void MoveLeft(const Position& pos) const    // converted
+    void MoveLeft(const Position& pos) const
     {
         Piece mypiece = m_pBoard[pos];
         m_pBoard[pos] = Piece::Empty;
@@ -327,7 +332,7 @@ public:
         else
             m_pBoard[pos.Offset(1, -1)] = mypiece;
     }
-    Direction CanMoveKing(const Position& pos) const    // converted
+    Direction CanMoveKing(const Position& pos) const
     {
         Direction where = Direction::None;
         if (pos.Row < BOARD_SIZE - 1)
@@ -350,7 +355,7 @@ public:
         }
         return where;
     }
-    void MoveKing(Direction dirn, const Position& pos) const    // converted
+    void MoveKing(Direction dirn, const Position& pos) const
     {
         if (dirn == Direction::None)
             return;
@@ -366,18 +371,18 @@ public:
             m_pBoard[pos.Offset(-1, -1)] = mypiece;
     }
 private:
-    byte MaxJump(const Position& pos) const // converted
+    sbyte MaxJump(const Position& pos) const
     {
-        byte rightjump = 0, leftjump = 0;
+        sbyte rightjump = 0, leftjump = 0;
         if (CanJumpRight(pos))
             rightjump = MaxJump(pos.Offset(2, 2)) + 1;
         if (CanJumpLeft(pos))
             leftjump = MaxJump(pos.Offset(2, -2)) + 1;
         return rightjump > leftjump ? rightjump : leftjump;
     }
-    byte MaxJumpKing(const Position& pos, Direction nothere) const  // converted
+    sbyte MaxJumpKing(const Position& pos, Direction nothere) const
     {
-        byte rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
+        sbyte rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
         Direction dirn = CanJumpKing(pos);
         if (nothere != Direction::RightUp && (dirn & Direction::RightUp) == Direction::RightUp)
             rightUp = MaxJumpKing(pos.Offset(2, 2), Direction::LeftDown) + 1;
@@ -407,7 +412,7 @@ public:
     std::list<Position> GetPositions() const
     {
         std::list<Position> posns;
-        for (byte i = 0; i < ARRAY_SIZE; i++)
+        for (sbyte i = 0; i < ARRAY_SIZE; i++)
             if (m_pBoard[i] & Piece::Black)
                 posns.push_back(Position(i));
         return posns;
@@ -541,7 +546,7 @@ public:
             return;
         m_pBoard[*pnewpos] = mypiece;
 
-        byte rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
+        sbyte rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
         Direction newdirn = CanJumpKing(*pnewpos);
         if ((newdirn & Direction::RightUp) == Direction::RightUp)
             rightUp = MaxJumpKing(Position(pnewpos->Row + 2, pnewpos->Col + 2), Direction::LeftDown) + 1;
@@ -639,18 +644,18 @@ public:
             m_pBoard[pos.Offset(-1, -1)] = mypiece;
     }
 private:
-    byte MaxJump(const Position& pos) const
+    sbyte MaxJump(const Position& pos) const
     {
-        byte rightjump = 0, leftjump = 0;
+        sbyte rightjump = 0, leftjump = 0;
         if (CanJumpRight(pos))
             rightjump = MaxJump(pos.Offset(-2, 2)) + 1;
         if (CanJumpLeft(pos))
             leftjump = MaxJump(pos.Offset(-2, -2)) + 1;
         return rightjump > leftjump ? rightjump : leftjump;
     }
-    byte MaxJumpKing(const Position& pos, Direction nothere) const  // same as white
+    sbyte MaxJumpKing(const Position& pos, Direction nothere) const  // same as white
     {
-        byte rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
+        sbyte rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
         Direction dirn = CanJumpKing(pos);
         if (nothere != Direction::RightUp && (dirn & Direction::RightUp) == Direction::RightUp)
             rightUp = MaxJumpKing(pos.Offset(2, 2), Direction::LeftDown) + 1;
@@ -890,14 +895,25 @@ private:
 class Gameplay
 {
 public:
-    Gameplay(bool player_is_white, int depth) 
-        :m_pBoard(Initialize()), m_Depth(depth), m_WhiteAI(!player_is_white), m_Cg()
+    Gameplay(int depth) 
+        :m_pBoard(Initialize()), m_Depth(depth), m_ColorInit(false), m_Cg()
     { }
     ~Gameplay()
     {
         delete[] m_pBoard;
     }
-    Piece GetPieceAt(byte row, byte col) const
+    void SetColor(bool whitePlayer)
+    {
+        if (!m_ColorInit)
+            m_WhiteAI = !whitePlayer;
+    }
+    bool IsPlayerWhite() const
+    {
+        if (m_ColorInit)
+            return !m_WhiteAI;
+        throw std::logic_error("");
+    }
+    Piece GetPieceAt(sbyte row, sbyte col) const
     {
         if ((row + col) % 2 == 1)
             return Piece::Empty;
@@ -915,8 +931,8 @@ public:
             return false;
 
         double *childValues = new double[children.size()];
-        byte bestChildInd = 0;
-        for (byte i = 0; i < children.size(); ++i)
+        sbyte bestChildInd = 0;
+        for (sbyte i = 0; i < children.size(); ++i)
         {
             childValues[i] = AlphaBetaPruning(children[i], m_Depth);
             if (childValues[bestChildInd] < childValues[i])
@@ -1019,5 +1035,36 @@ private:
     Piece      *m_pBoard;
     int         m_Depth;
     bool        m_WhiteAI;
+    bool        m_ColorInit;
     Childgetter m_Cg;
 };
+void ToStream(std::ostream& out, const Gameplay& game)
+{
+    out << "----------------\n";
+    for (sbyte row = BOARD_SIZE - 1; row >= 0; --row)
+    {
+        for (sbyte col = 0; col < BOARD_SIZE; ++col)
+        {
+            Piece p = game.GetPieceAt(row, col);
+
+            if (p & Piece::White)
+            {
+                if (p & Piece::King)
+                    out << "E ";
+                else
+                    out << "e ";
+            }
+            else if (p & Piece::Black)
+            {
+                if (p & Piece::King)
+                    out << "O ";
+                else
+                    out << "o ";
+            }
+            else
+                out << "- ";
+        }
+        out << '\n';
+    }
+    out << "----------------\n";
+}

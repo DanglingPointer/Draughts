@@ -1,48 +1,62 @@
 // DraughtsLib.cpp : Defines the exported functions for the DLL application.
-//
+
+#include<iostream>
 #include"DraughtsEngine.h"
 #include "DraughtsLib.h"
 
 // DLL entry point
-//
 BOOL APIENTRY DllMain(HMODULE hModule,
                       DWORD  ul_reason_for_call,
                       LPVOID lpReserved
                       )
 {
-    switch (ul_reason_for_call)
-    {
-    case DLL_PROCESS_ATTACH:
-    case DLL_THREAD_ATTACH:
-    case DLL_THREAD_DETACH:
-    case DLL_PROCESS_DETACH:
-        break;
-    }
+    //switch (ul_reason_for_call)
+    //{
+    //case DLL_PROCESS_ATTACH:
+    //case DLL_THREAD_ATTACH:
+    //case DLL_THREAD_DETACH:
+    //case DLL_PROCESS_DETACH:
+    //    break;
+    //}
     return TRUE;
 }
 
-DRAUGHTSLIB_API Gameplay *CreateGameplay(bool player_is_white, int depth)
+Gameplay *pGame = NULL;
+
+DRAUGHTSLIB_API void CreateGameplay(int depth)
 {
-    return new Gameplay(player_is_white, depth);
+    if (pGame)
+        delete pGame;
+    pGame = new Gameplay(depth);
 }
 
-DRAUGHTSLIB_API Piece GetPieceAt(Gameplay *gp, byte row, byte col)
+DRAUGHTSLIB_API void SetPlayerColro(BOOL white)
 {
-    return gp->GetPieceAt(row, col);
+    pGame->SetColor(white);
 }
 
-DRAUGHTSLIB_API bool AITurn(Gameplay *gp)
+DRAUGHTSLIB_API Piece GetPieceAt(byte row, byte col)
 {
-    return gp->AITurn();
+    return pGame->GetPieceAt(row, col);
 }
 
-DRAUGHTSLIB_API bool PlayerTurn(Gameplay *gp, int row, int col, Direction dirn)
+DRAUGHTSLIB_API BOOL AITurn()
 {
-    return gp->PlayerTurn(row, col, dirn);
+    return (int)(pGame->AITurn());
 }
 
-DRAUGHTSLIB_API void Dispose(Gameplay *gp)
+DRAUGHTSLIB_API BOOL PlayerTurn(int row, int col, Direction dirn)
 {
-    if (gp)
-        delete gp;
+    return (int)(pGame->PlayerTurn(row, col, dirn));
+}
+
+DRAUGHTSLIB_API void Dispose()
+{
+    if (pGame)
+        delete pGame;
+}
+
+DRAUGHTSLIB_API void Print()
+{
+    ToStream(std::cout, *pGame);
 }
