@@ -2,6 +2,7 @@
 // For console version the macro CONSOLE must be defined
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Collections.Generic;
 
 namespace Checkers
@@ -59,11 +60,9 @@ namespace Checkers
     {
         public Position(int row, int col) : this()
         {
-        #if DEBUG
             if (row < 0 || row >= C.BoardSize || 
                 col < 0 || col >= C.BoardSize)
                 throw new ArgumentOutOfRangeException("Invalid position");
-        #endif
             Row = row;
             Col = col;
         }
@@ -262,12 +261,17 @@ namespace Checkers
         }
         public bool CanJumpRight(Position pos)
         {
-            if (pos.Col > C.BoardSize - 3 || pos.Row > C.BoardSize - 3)
+            try
+            {
+                if ((m_Board[pos.Offset(1, 1)] & Piece.Black) == Piece.Black &&
+                    m_Board[pos.Offset(2, 2)] == Piece.Empty)
+                    return true;
                 return false;
-            if ((m_Board[pos.Offset(1, 1)] & Piece.Black) == Piece.Black &&
-                m_Board[pos.Offset(2, 2)] == Piece.Empty)
-                return true;
-            return false;
+            }
+            catch(ArgumentOutOfRangeException)
+            {
+                return false;
+            }
         }
         public void JumpRight(Position pos)
         {
@@ -298,12 +302,17 @@ namespace Checkers
         }
         public bool CanJumpLeft(Position pos)
         {
-            if (pos.Col < 2 || pos.Row > C.BoardSize - 3)
+            try
+            {
+                if ((m_Board[pos.Offset(1, -1)] & Piece.Black) == Piece.Black &&
+                    m_Board[pos.Offset(2, -2)] == Piece.Empty)
+                    return true;
                 return false;
-            if ((m_Board[pos.Offset(1, -1)] & Piece.Black) == Piece.Black &&
-                m_Board[pos.Offset(2, -2)] == Piece.Empty)
-                return true;
-            return false;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
         }
         public void JumpLeft(Position pos)
         {
@@ -414,11 +423,16 @@ namespace Checkers
         }
         public bool CanMoveRight(Position pos)
         {
-            if (pos.Col > C.BoardSize - 2 || pos.Row > C.BoardSize - 2)
+            try
+            {
+                if (m_Board[pos.Offset(1, 1)] == Piece.Empty)
+                    return true;
                 return false;
-            if (m_Board[pos.Offset(1, 1)] == Piece.Empty)
-                return true;
-            return false;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
         }
         public void MoveRight(Position pos)
         {
@@ -431,11 +445,16 @@ namespace Checkers
         }
         public bool CanMoveLeft(Position pos)
         {
-            if (pos.Col < 1 || pos.Row > C.BoardSize - 2)
+            try
+            {
+                if (m_Board[pos.Offset(1, -1)] == Piece.Empty)
+                    return true;
                 return false;
-            if (m_Board[pos.Offset(1, -1)] == Piece.Empty)
-                return true;
-            return false;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
         }
         public void MoveLeft(Position pos)
         {
@@ -545,12 +564,17 @@ namespace Checkers
         }
         public bool CanJumpRight(Position pos)
         {
-            if (pos.Col > C.BoardSize - 3 || pos.Row < 2)
+            try
+            {
+                if ((m_Board[pos.Offset(-1, 1)] & Piece.White) == Piece.White &&
+                    m_Board[pos.Offset(-2, 2)] == Piece.Empty)
+                    return true;
                 return false;
-            if ((m_Board[pos.Offset(-1, 1)] & Piece.White) == Piece.White &&
-                m_Board[pos.Offset(-2, 2)] == Piece.Empty)
-                return true;
-            return false;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
         }
         public void JumpRight(Position pos)
         {
@@ -581,12 +605,17 @@ namespace Checkers
         }
         public bool CanJumpLeft(Position pos)
         {
-            if (pos.Col < 2 || pos.Row < 2)
+            try
+            {
+                if ((m_Board[pos.Offset(-1, -1)] & Piece.White) == Piece.White &&
+                    m_Board[pos.Offset(-2, -2)] == Piece.Empty)
+                    return true;
                 return false;
-            if ((m_Board[pos.Offset(-1, -1)] & Piece.White) == Piece.White &&
-                m_Board[pos.Offset(-2, -2)] == Piece.Empty)
-                return true;
-            return false;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
         }
         public void JumpLeft(Position pos)
         {
@@ -697,11 +726,16 @@ namespace Checkers
         }
         public bool CanMoveRight(Position pos)
         {
-            if (pos.Col > C.BoardSize - 2 || pos.Row < 1)
+            try
+            {
+                if (m_Board[pos.Offset(-1, 1)] == Piece.Empty)
+                    return true;
                 return false;
-            if (m_Board[pos.Offset(-1, 1)] == Piece.Empty)
-                return true;
-            return false;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
         }
         public void MoveRight(Position pos)
         {
@@ -714,11 +748,16 @@ namespace Checkers
         }
         public bool CanMoveLeft(Position pos)
         {
-            if (pos.Col < 1 || pos.Row < 1)
+            try
+            {
+                if (m_Board[pos.Offset(-1, -1)] == Piece.Empty)
+                    return true;
                 return false;
-            if (m_Board[pos.Offset(-1, -1)] == Piece.Empty)
-                return true;
-            return false;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
         }
         public void MoveLeft(Position pos)
         {
@@ -798,6 +837,35 @@ namespace Checkers
             return Aux.Max(rightUp, rightDown, leftUp, leftDown);
         }
         Piece[] m_Board;
+    }
+    //===============================================================================
+    /// <summary>
+    /// Nodes that build a game tree in order to use dynamic programming.
+    /// </summary>
+    //===============================================================================
+    internal class Node
+    {
+        public Node(Piece[] board)
+        {
+            m_Board = board;
+            m_Childs = null;
+        }
+        public double Value;
+        public Piece[] Board
+        {
+            get { return m_Board; }
+        }
+        public List<Node> ChildNodes
+        {
+            get { return m_Childs; }
+            set { m_Childs = value; }
+        }
+        public static implicit operator Piece[] (Node node)
+        {
+            return node.Board;
+        }
+        List<Node> m_Childs;
+        Piece[]    m_Board;
     }
     //===============================================================================
     /// <summary>
@@ -887,14 +955,14 @@ namespace Checkers
             m_Move = (jump) ? MoveType.Jump : MoveType.Move;
         }
         /// <summary> All members must be configured. </summary>
-        public List<Piece[]> ChildStates
+        public List<Node> ChildStates
         {
             get
             {
                 if (m_Move == MoveType.Unset)
                     throw new InvalidOperationException("Childgetter not configured");
 
-                var childs = new List<Piece[]>();
+                var childs = new List<Node>();
                 foreach(Position p in m_Righties)
                 {
                     Piece[] child = Aux.Copy(m_State);
@@ -904,7 +972,7 @@ namespace Checkers
                         m_Pc.JumpRight(p);
                     else
                         m_Pc.MoveRight(p);
-                    childs.Add(child);
+                    childs.Add(new Node(child));
                 }
                 foreach(Position p in m_Lefties)
                 {
@@ -915,7 +983,7 @@ namespace Checkers
                         m_Pc.JumpLeft(p);
                     else
                         m_Pc.MoveLeft(p);
-                    childs.Add(child);
+                    childs.Add(new Node(child));
                 }
                 for (int i = 0; i < m_Kings.Count; ++i)
                 {
@@ -929,28 +997,28 @@ namespace Checkers
                             Piece[] child = Aux.Copy(m_State);
                             m_Pc.Board = child;
                             m_Pc.JumpKing(Direction.LeftDown, p);
-                            childs.Add(child);
+                            childs.Add(new Node(child));
                         }
                         if ((dirn & Direction.LeftUp) == Direction.LeftUp)
                         {
                             Piece[] child = Aux.Copy(m_State);
                             m_Pc.Board = child;
                             m_Pc.JumpKing(Direction.LeftUp, p);
-                            childs.Add(child);
+                            childs.Add(new Node(child));
                         }
                         if ((dirn & Direction.RightDown) == Direction.RightDown)
                         {
                             Piece[] child = Aux.Copy(m_State);
                             m_Pc.Board = child;
                             m_Pc.JumpKing(Direction.RightDown, p);
-                            childs.Add(child);
+                            childs.Add(new Node(child));
                         }
                         if ((dirn & Direction.RightUp) == Direction.RightUp)
                         {
                             Piece[] child = Aux.Copy(m_State);
                             m_Pc.Board = child;
                             m_Pc.JumpKing(Direction.RightUp, p);
-                            childs.Add(child);
+                            childs.Add(new Node(child));
                         }
                     }
                     else // if (m_Move == MoveType.Move)
@@ -960,28 +1028,28 @@ namespace Checkers
                             Piece[] child = Aux.Copy(m_State);
                             m_Pc.Board = child;
                             m_Pc.MoveKing(Direction.LeftDown, p);
-                            childs.Add(child);
+                            childs.Add(new Node(child));
                         }
                         if ((dirn & Direction.LeftUp) == Direction.LeftUp)
                         {
                             Piece[] child = Aux.Copy(m_State);
                             m_Pc.Board = child;
                             m_Pc.MoveKing(Direction.LeftUp, p);
-                            childs.Add(child);
+                            childs.Add(new Node(child));
                         }
                         if ((dirn & Direction.RightDown) == Direction.RightDown)
                         {
                             Piece[] child = Aux.Copy(m_State);
                             m_Pc.Board = child;
                             m_Pc.MoveKing(Direction.RightDown, p);
-                            childs.Add(child);
+                            childs.Add(new Node(child));
                         }
                         if ((dirn & Direction.RightUp) == Direction.RightUp)
                         {
                             Piece[] child = Aux.Copy(m_State);
                             m_Pc.Board = child;
                             m_Pc.MoveKing(Direction.RightUp, p);
-                            childs.Add(child);
+                            childs.Add(new Node(child));
                         }
                     }
                 }
@@ -1032,7 +1100,8 @@ namespace Checkers
     }
     //===============================================================================
     /// <summary>
-    /// The game, the only class accessible from outside (alongside the enums).
+    /// The game class that maintains the board and a tree of nodes, and facilitates 
+    /// player and AI moves.
     /// </summary>
     //===============================================================================
     public class Gameplay
@@ -1046,8 +1115,11 @@ namespace Checkers
             C.BoardSize = boardSize;
             m_Depth = depth;
             m_Cg = new Childgetter();
-            Aux.Initialize(out m_Board);
-            m_Initialized = false;
+            m_ColorInitialized = false;
+
+            Piece[] board;
+            Aux.Initialize(out board);
+            m_Root = new Node(board);
         }
         public Gameplay() : this(9, 8)
         { }
@@ -1058,16 +1130,16 @@ namespace Checkers
         {
             get
             {
-                if (m_Initialized)
+                if (m_ColorInitialized)
                     return !m_WhiteAI;
                 else
                     throw new InvalidOperationException("Player color not initialized");
             }
             set
             {
-                if (!m_Initialized)
+                if (!m_ColorInitialized)
                 {
-                    m_Initialized = true;
+                    m_ColorInitialized = true;
                     m_WhiteAI = !value;
                 }
                 else
@@ -1082,32 +1154,34 @@ namespace Checkers
                 if ((row + col) % 2 == 1)
                     return Piece.Empty;
                 else
-                    return m_Board[new Position(row, col)];
+                    return m_Root.Board[new Position(row, col)];
             }
         }
         /// <summary> Returns 'false' if no possible moves. </summary>
         public bool AITurn()
         {
-            if (!m_Initialized)
+            if (!m_ColorInitialized)
                 throw new InvalidOperationException();
 
             bool color = (m_WhiteAI) ? C.White : C.Black;
 
-            m_Cg.Configure(color, m_Board);
-
-            var children = m_Cg.ChildStates;
-            if (children.Count == 0)
-                return false;
-
-            var childValues = new double[children.Count];
-            int bestChildInd = 0;
-            for (int i = 0; i < children.Count; ++i)
+            if (m_Root.ChildNodes == null)
             {
-                childValues[i] = AlphaBetaPruning(children[i], m_Depth);
-                if (childValues[bestChildInd] < childValues[i])
+                m_Cg.Configure(color, m_Root);
+
+                m_Root.ChildNodes = m_Cg.ChildStates;
+            }
+            if (m_Root.ChildNodes.Count == 0)
+                return false;
+            
+            int bestChildInd = 0;
+            for (int i = 0; i < m_Root.ChildNodes.Count; ++i)
+            {
+                AlphaBetaPruning(m_Root.ChildNodes[i], m_Depth);
+                if (m_Root.ChildNodes[bestChildInd].Value < m_Root.ChildNodes[i].Value)
                     bestChildInd = i;
             }
-            m_Board = children[bestChildInd];
+            m_Root = m_Root.ChildNodes[bestChildInd];
             return true;
         }
         /// <summary> 
@@ -1116,19 +1190,19 @@ namespace Checkers
         /// </summary>
         public bool PlayerTurn(int row, int col, Direction dirn)
         {
-            if (!m_Initialized)
+            if (!m_ColorInitialized)
                 throw new InvalidOperationException();
 
             Position pos = new Position(row, col);
             bool playerColor = (m_WhiteAI) ? C.Black : C.White;
-            m_Cg.Configure(playerColor, m_Board);
+            m_Cg.Configure(playerColor, m_Root);
             bool jumping = m_Cg.Jumping;
 
-            if ((playerColor == C.White && (m_Board[pos] & Piece.Black) == Piece.Black) ||
-                (playerColor == C.Black && (m_Board[pos] & Piece.White) == Piece.White))
+            if ((playerColor == C.White && (m_Root.Board[pos] & Piece.Black) == Piece.Black) ||
+                (playerColor == C.Black && ((m_Root.Board[pos] & Piece.White) == Piece.White)))
                 return false;
 
-            if ((m_Board[pos] & Piece.King) == Piece.King)
+            if ((m_Root.Board[pos] & Piece.King) == Piece.King)
             {
                 Direction whereCanGo = (jumping) ? m_Cg.Controller.CanJumpKing(pos) : m_Cg.Controller.CanMoveKing(pos);
                 if ((whereCanGo & dirn) == dirn)
@@ -1162,9 +1236,18 @@ namespace Checkers
                         return false;
                 }
             }
+            if (m_Root.ChildNodes != null)
+            {
+                foreach (Node child in m_Root.ChildNodes)
+                    if (Enumerable.SequenceEqual(m_Root.Board, child.Board))
+                    {
+                        m_Root = child;
+                        break;
+                    }
+            }
             return true;
         }
-        private double AlphaBetaPruning(Piece[] node, int depth, double alpha = 0.0, double beta = 1.0, bool aiturn = false)
+        private void AlphaBetaPruning(Node node, int depth, double alpha = 0.0, double beta = 1.0, bool aiturn = false)
         {
             bool color;
             if (m_WhiteAI)
@@ -1173,39 +1256,44 @@ namespace Checkers
                 color = (aiturn) ? C.Black : C.White;
             m_Cg.Configure(color, node);
 
-            double val = m_Cg.HeuristicValue(m_WhiteAI);
-            if (depth == 0 || val == 0.0 || val == 1.0)
-                return val;
+            node.Value = m_Cg.HeuristicValue(m_WhiteAI);
+            if (depth == 0 || node.Value == 0.0 || node.Value == 1.0)
+            {
+                return;
+            }
 
-            List<Piece[]> children = m_Cg.ChildStates;
+            if (node.ChildNodes == null)
+                node.ChildNodes = m_Cg.ChildStates;
+
             if (aiturn)
             {
-                val = 0.0;
-                foreach(Piece[] child in children)
+                node.Value = 0.0;
+                foreach(Node child in node.ChildNodes)
                 {
-                    val = Aux.Max(val, AlphaBetaPruning(child, depth - 1, alpha, beta, false));
-                    alpha = Aux.Max(alpha, val);
+                    AlphaBetaPruning(child, depth - 1, alpha, beta, false);
+                    node.Value = Aux.Max(node.Value, child.Value);
+                    alpha = Aux.Max(alpha, node.Value);
                     if (beta <= alpha)
                         break;
                 }
             }
             else
             {
-                val = 1.0;
-                foreach(Piece[] child in children)
+                node.Value = 1.0;
+                foreach(Node child in node.ChildNodes)
                 {
-                    val = Aux.Min(val, AlphaBetaPruning(child, depth - 1, alpha, beta, true));
-                    beta = Aux.Min(beta, val);
+                    AlphaBetaPruning(child, depth - 1, alpha, beta, true);
+                    node.Value = Aux.Min(node.Value, child.Value);
+                    beta = Aux.Min(beta, node.Value);
                     if (beta <= alpha)
                         break;
                 }
             }
-            return val;
         }
         int         m_Depth;
         Childgetter m_Cg;
-        Piece[]     m_Board;
         bool        m_WhiteAI;
-        bool        m_Initialized;
+        bool        m_ColorInitialized;
+        Node        m_Root;
     }
 }
