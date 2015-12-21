@@ -10,7 +10,7 @@ namespace Checkers
     {
         static void Main(string[] args)
         {
-            Gameplay game = new Gameplay();
+            Gameplay game = new Gameplay(11, 8);
 
             bool colorSet;
             do

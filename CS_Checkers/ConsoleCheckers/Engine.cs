@@ -60,9 +60,6 @@ namespace Checkers
     {
         public Position(int row, int col) : this()
         {
-            if (row < 0 || row >= C.BoardSize || 
-                col < 0 || col >= C.BoardSize)
-                throw new ArgumentOutOfRangeException("Invalid position");
             Row = row;
             Col = col;
         }
@@ -261,17 +258,13 @@ namespace Checkers
         }
         public bool CanJumpRight(Position pos)
         {
-            try
-            {
-                if ((m_Board[pos.Offset(1, 1)] & Piece.Black) == Piece.Black &&
+
+            if (pos.Col > C.BoardSize - 3 || pos.Row > C.BoardSize - 3)
+                return false;
+            if ((m_Board[pos.Offset(1, 1)] & Piece.Black) == Piece.Black &&
                     m_Board[pos.Offset(2, 2)] == Piece.Empty)
                     return true;
                 return false;
-            }
-            catch(ArgumentOutOfRangeException)
-            {
-                return false;
-            }
         }
         public void JumpRight(Position pos)
         {
@@ -302,17 +295,13 @@ namespace Checkers
         }
         public bool CanJumpLeft(Position pos)
         {
-            try
-            {
-                if ((m_Board[pos.Offset(1, -1)] & Piece.Black) == Piece.Black &&
+
+            if (pos.Col < 2 || pos.Row > C.BoardSize - 3)
+                return false;
+            if ((m_Board[pos.Offset(1, -1)] & Piece.Black) == Piece.Black &&
                     m_Board[pos.Offset(2, -2)] == Piece.Empty)
                     return true;
                 return false;
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                return false;
-            }
         }
         public void JumpLeft(Position pos)
         {
@@ -423,16 +412,11 @@ namespace Checkers
         }
         public bool CanMoveRight(Position pos)
         {
-            try
-            {
-                if (m_Board[pos.Offset(1, 1)] == Piece.Empty)
+            if (pos.Col > C.BoardSize - 2 || pos.Row > C.BoardSize - 2)
+                return false;
+            if (m_Board[pos.Offset(1, 1)] == Piece.Empty)
                     return true;
                 return false;
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                return false;
-            }
         }
         public void MoveRight(Position pos)
         {
@@ -445,16 +429,11 @@ namespace Checkers
         }
         public bool CanMoveLeft(Position pos)
         {
-            try
-            {
-                if (m_Board[pos.Offset(1, -1)] == Piece.Empty)
+            if (pos.Col < 1 || pos.Row > C.BoardSize - 2)
+                return false;
+            if (m_Board[pos.Offset(1, -1)] == Piece.Empty)
                     return true;
                 return false;
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                return false;
-            }
         }
         public void MoveLeft(Position pos)
         {
@@ -564,17 +543,12 @@ namespace Checkers
         }
         public bool CanJumpRight(Position pos)
         {
-            try
-            {
-                if ((m_Board[pos.Offset(-1, 1)] & Piece.White) == Piece.White &&
+            if (pos.Col > C.BoardSize - 3 || pos.Row < 2)
+                return false;
+            if ((m_Board[pos.Offset(-1, 1)] & Piece.White) == Piece.White &&
                     m_Board[pos.Offset(-2, 2)] == Piece.Empty)
                     return true;
                 return false;
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                return false;
-            }
         }
         public void JumpRight(Position pos)
         {
@@ -605,17 +579,12 @@ namespace Checkers
         }
         public bool CanJumpLeft(Position pos)
         {
-            try
-            {
-                if ((m_Board[pos.Offset(-1, -1)] & Piece.White) == Piece.White &&
-                    m_Board[pos.Offset(-2, -2)] == Piece.Empty)
-                    return true;
+            if (pos.Col < 2 || pos.Row < 2)
                 return false;
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                return false;
-            }
+            if ((m_Board[pos.Offset(-1, -1)] & Piece.White) == Piece.White &&
+                m_Board[pos.Offset(-2, -2)] == Piece.Empty)
+                return true;
+            return false;
         }
         public void JumpLeft(Position pos)
         {
@@ -726,16 +695,11 @@ namespace Checkers
         }
         public bool CanMoveRight(Position pos)
         {
-            try
-            {
-                if (m_Board[pos.Offset(-1, 1)] == Piece.Empty)
-                    return true;
+            if (pos.Col > C.BoardSize - 2 || pos.Row < 1)
                 return false;
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                return false;
-            }
+            if (m_Board[pos.Offset(-1, 1)] == Piece.Empty)
+                return true;
+            return false;
         }
         public void MoveRight(Position pos)
         {
@@ -748,16 +712,11 @@ namespace Checkers
         }
         public bool CanMoveLeft(Position pos)
         {
-            try
-            {
-                if (m_Board[pos.Offset(-1, -1)] == Piece.Empty)
-                    return true;
+            if (pos.Col < 1 || pos.Row < 1)
                 return false;
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                return false;
-            }
+            if (m_Board[pos.Offset(-1, -1)] == Piece.Empty)
+                return true;
+            return false;
         }
         public void MoveLeft(Position pos)
         {
@@ -859,10 +818,6 @@ namespace Checkers
         {
             get { return m_Childs; }
             set { m_Childs = value; }
-        }
-        public static implicit operator Piece[] (Node node)
-        {
-            return node.Board;
         }
         List<Node> m_Childs;
         Piece[]    m_Board;
@@ -1116,6 +1071,7 @@ namespace Checkers
             m_Depth = depth;
             m_Cg = new Childgetter();
             m_ColorInitialized = false;
+            m_Rand = new Random();
 
             Piece[] board;
             Aux.Initialize(out board);
@@ -1163,25 +1119,19 @@ namespace Checkers
             if (!m_ColorInitialized)
                 throw new InvalidOperationException();
 
-            bool color = (m_WhiteAI) ? C.White : C.Black;
+            AlphaBetaPruning(m_Root, m_Depth);
 
-            if (m_Root.ChildNodes == null)
-            {
-                m_Cg.Configure(color, m_Root);
-
-                m_Root.ChildNodes = m_Cg.ChildStates;
-            }
             if (m_Root.ChildNodes.Count == 0)
                 return false;
             
             int bestChildInd = 0;
             for (int i = 0; i < m_Root.ChildNodes.Count; ++i)
             {
-                AlphaBetaPruning(m_Root.ChildNodes[i], m_Depth);
                 if (m_Root.ChildNodes[bestChildInd].Value < m_Root.ChildNodes[i].Value)
                     bestChildInd = i;
             }
             m_Root = m_Root.ChildNodes[bestChildInd];
+
             return true;
         }
         /// <summary> 
@@ -1195,7 +1145,7 @@ namespace Checkers
 
             Position pos = new Position(row, col);
             bool playerColor = (m_WhiteAI) ? C.Black : C.White;
-            m_Cg.Configure(playerColor, m_Root);
+            m_Cg.Configure(playerColor, m_Root.Board);
             bool jumping = m_Cg.Jumping;
 
             if ((playerColor == C.White && (m_Root.Board[pos] & Piece.Black) == Piece.Black) ||
@@ -1247,23 +1197,32 @@ namespace Checkers
             }
             return true;
         }
-        private void AlphaBetaPruning(Node node, int depth, double alpha = 0.0, double beta = 1.0, bool aiturn = false)
+        private void AlphaBetaPruning(Node node, int depth, double alpha = 0.0, double beta = 1.0, bool aiturn = true)
         {
-            bool color;
-            if (m_WhiteAI)
-                color = (aiturn) ? C.White : C.Black;
-            else
-                color = (aiturn) ? C.Black : C.White;
-            m_Cg.Configure(color, node);
-
-            node.Value = m_Cg.HeuristicValue(m_WhiteAI);
-            if (depth == 0 || node.Value == 0.0 || node.Value == 1.0)
+            if (node.ChildNodes == null || depth == 0)
             {
+                bool color;
+                if (m_WhiteAI)
+                    color = (aiturn) ? C.White : C.Black;
+                else
+                    color = (aiturn) ? C.Black : C.White;
+                m_Cg.Configure(color, node.Board);
+
+                if (depth == 0)
+                {
+                    node.Value = m_Cg.HeuristicValue(m_WhiteAI);
+                    return;
+                }
+                node.ChildNodes = m_Cg.ChildStates;
+                node.ChildNodes.OrderBy(
+                    delegate (Node n) { return m_Rand.Next(); }
+                );
+            }
+            if (node.ChildNodes.Count == 0) 
+            {
+                node.Value = (aiturn) ? 1.0 : 0.0;
                 return;
             }
-
-            if (node.ChildNodes == null)
-                node.ChildNodes = m_Cg.ChildStates;
 
             if (aiturn)
             {
@@ -1274,7 +1233,7 @@ namespace Checkers
                     node.Value = Aux.Max(node.Value, child.Value);
                     alpha = Aux.Max(alpha, node.Value);
                     if (beta <= alpha)
-                        break;
+                        return;
                 }
             }
             else
@@ -1286,7 +1245,7 @@ namespace Checkers
                     node.Value = Aux.Min(node.Value, child.Value);
                     beta = Aux.Min(beta, node.Value);
                     if (beta <= alpha)
-                        break;
+                        return;
                 }
             }
         }
@@ -1295,5 +1254,6 @@ namespace Checkers
         bool        m_WhiteAI;
         bool        m_ColorInitialized;
         Node        m_Root;
+        Random      m_Rand;
     }
 }
