@@ -1178,12 +1178,16 @@ namespace Checkers
             }
             if (m_Root.ChildNodes != null)
             {
+                bool existingNode = false;
                 foreach (Node child in m_Root.ChildNodes)
                     if (Enumerable.SequenceEqual(m_Root.Board, child.Board))
                     {
                         m_Root = child;
+                        existingNode = true;
                         break;
                     }
+                if (!existingNode)
+                    m_Root.ChildNodes = null;
             }
             return true;
         }
