@@ -799,34 +799,24 @@ namespace Checkers
     }
     //===============================================================================
     /// <summary>
-    /// Nodes that build a game tree in order to use dynamic programming.
+    /// Nodes build a game tree in order to use dynamic programming.
+    /// Childgetter obtains child nodes from the current game state.
     /// </summary>
     //===============================================================================
     internal class Node
     {
         public Node(Piece[] board)
         {
-            m_Board = board;
-            m_Childs = null;
+            Board = board;
+            ChildNodes = null;
         }
-        public double Value;
+        public double Value
+        { get; set; }
         public Piece[] Board
-        {
-            get { return m_Board; }
-        }
+        { get; }
         public List<Node> ChildNodes
-        {
-            get { return m_Childs; }
-            set { m_Childs = value; }
-        }
-        List<Node> m_Childs;
-        Piece[]    m_Board;
+        { get; set; }
     }
-    //===============================================================================
-    /// <summary>
-    /// Creates an array of child states from the current game state.
-    /// To be created only once, then takes different fields.
-    /// </summary>
     //===============================================================================
     internal class Childgetter
     {
