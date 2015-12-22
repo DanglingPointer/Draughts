@@ -84,6 +84,17 @@ namespace Checkers
             int col = (index % (C.BoardSize / 2)) * 2 + row % 2;
             return new Position(row, col);
         }
+        /// <summary>
+        /// Comparing positions by value
+        /// </summary>
+        public static bool operator==(Position pos1, Position pos2)
+        {
+            return (pos1.Row == pos2.Row) && (pos1.Col == pos2.Col);
+        }
+        public static bool operator !=(Position pos1, Position pos2)
+        {
+            return (pos1.Row != pos2.Row) && (pos1.Col != pos2.Col);
+        }
     }
     internal static class Aux
     {
@@ -390,16 +401,16 @@ namespace Checkers
             int rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
             Direction newdirn = CanJumpKing(newpos);
             if ((newdirn & Direction.RightUp) == Direction.RightUp)
-                rightUp = MaxJumpKing(newpos.Offset(2, 2), Direction.LeftDown) + 1;
+                rightUp = MaxJumpKing(newpos.Offset(2, 2), Direction.LeftDown, newpos) + 1;
             if ((newdirn & Direction.LeftUp) == Direction.LeftUp)
-                leftUp = MaxJumpKing(newpos.Offset(2, -2), Direction.RightDown) + 1;
+                leftUp = MaxJumpKing(newpos.Offset(2, -2), Direction.RightDown, newpos) + 1;
             if ((newdirn & Direction.RightDown) == Direction.RightDown)
-                rightDown = MaxJumpKing(newpos.Offset(-2, 2), Direction.LeftUp) + 1;
+                rightDown = MaxJumpKing(newpos.Offset(-2, 2), Direction.LeftUp, newpos) + 1;
             if ((newdirn & Direction.LeftDown) == Direction.LeftDown)
-                leftDown = MaxJumpKing(newpos.Offset(-2, -2), Direction.RightUp) + 1;
+                leftDown = MaxJumpKing(newpos.Offset(-2, -2), Direction.RightUp, newpos) + 1;
 
             if (rightDown != 0 || rightUp != 0 || leftDown != 0 || leftUp != 0)
-            {
+            {   // Jump where greatest number of jumps
                 if (rightUp >= rightDown && rightUp >= leftUp && rightUp >= leftDown)
                     JumpKing(Direction.RightUp, newpos);
                 else if (rightDown >= rightUp && rightDown >= leftUp && rightDown >= leftDown)
@@ -498,18 +509,20 @@ namespace Checkers
         /// Returns max number of possible successive jumps for a King at 'pos'.
         /// 'nothere' is the direction where it cannot jump from 'pos'.
         /// </summary>
-        private int MaxJumpKing(Position pos, Direction nothere)
+        private int MaxJumpKing(Position pos, Direction nothere, Position initpos) // same as for White
         {
+            if (pos == initpos)
+                return 0;
             int rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
             Direction dirn = CanJumpKing(pos);
             if (nothere != Direction.RightUp && (dirn & Direction.RightUp) == Direction.RightUp)
-                rightUp = MaxJumpKing(pos.Offset(2, 2), Direction.LeftDown) + 1;
+                rightUp = MaxJumpKing(pos.Offset(2, 2), Direction.LeftDown, initpos) + 1;
             if (nothere != Direction.LeftUp && (dirn & Direction.LeftUp) == Direction.LeftUp)
-                leftUp = MaxJumpKing(pos.Offset(2, -2), Direction.RightDown) + 1;
+                leftUp = MaxJumpKing(pos.Offset(2, -2), Direction.RightDown, initpos) + 1;
             if (nothere != Direction.RightDown && (dirn & Direction.RightDown) == Direction.RightDown)
-                rightDown = MaxJumpKing(pos.Offset(-2, 2), Direction.LeftUp) + 1;
+                rightDown = MaxJumpKing(pos.Offset(-2, 2), Direction.LeftUp, initpos) + 1;
             if (nothere != Direction.LeftDown && (dirn & Direction.LeftDown) == Direction.LeftDown)
-                leftDown = MaxJumpKing(pos.Offset(-2, -2), Direction.RightUp) + 1;
+                leftDown = MaxJumpKing(pos.Offset(-2, -2), Direction.RightUp, initpos) + 1;
             return Aux.Max(rightUp, rightDown, leftUp, leftDown);
         }
         Piece[] m_Board;
@@ -673,16 +686,16 @@ namespace Checkers
             int rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
             Direction newdirn = CanJumpKing(newpos);
             if ((newdirn & Direction.RightUp) == Direction.RightUp)
-                rightUp = MaxJumpKing(newpos.Offset(2, 2), Direction.LeftDown) + 1;
+                rightUp = MaxJumpKing(newpos.Offset(2, 2), Direction.LeftDown, newpos) + 1;
             if ((newdirn & Direction.LeftUp) == Direction.LeftUp)
-                leftUp = MaxJumpKing(newpos.Offset(2, -2), Direction.RightDown) + 1;
+                leftUp = MaxJumpKing(newpos.Offset(2, -2), Direction.RightDown, newpos) + 1;
             if ((newdirn & Direction.RightDown) == Direction.RightDown)
-                rightDown = MaxJumpKing(newpos.Offset(-2, 2), Direction.LeftUp) + 1;
+                rightDown = MaxJumpKing(newpos.Offset(-2, 2), Direction.LeftUp, newpos) + 1;
             if ((newdirn & Direction.LeftDown) == Direction.LeftDown)
-                leftDown = MaxJumpKing(newpos.Offset(-2, -2), Direction.RightUp) + 1;
+                leftDown = MaxJumpKing(newpos.Offset(-2, -2), Direction.RightUp, newpos) + 1;
 
             if (rightDown != 0 || rightUp != 0 || leftDown != 0 || leftUp != 0)
-            {
+            {   // Jump where greatest number of jumps
                 if (rightUp >= rightDown && rightUp >= leftUp && rightUp >= leftDown)
                     JumpKing(Direction.RightUp, newpos);
                 else if (rightDown >= rightUp && rightDown >= leftUp && rightDown >= leftDown)
@@ -781,18 +794,20 @@ namespace Checkers
         /// Returns max number of possible successive jumps for a King at 'pos'.
         /// 'nothere' is the direction where it cannot jump from 'pos'.
         /// </summary>
-        private int MaxJumpKing(Position pos, Direction nothere) // same as for White
+        private int MaxJumpKing(Position pos, Direction nothere, Position initpos) // same as for White
         {
+            if (pos == initpos)
+                return 0;
             int rightUp = 0, leftUp = 0, rightDown = 0, leftDown = 0;
             Direction dirn = CanJumpKing(pos);
             if (nothere != Direction.RightUp && (dirn & Direction.RightUp) == Direction.RightUp)
-                rightUp = MaxJumpKing(pos.Offset(2, 2), Direction.LeftDown) + 1;
+                rightUp = MaxJumpKing(pos.Offset(2, 2), Direction.LeftDown, initpos) + 1;
             if (nothere != Direction.LeftUp && (dirn & Direction.LeftUp) == Direction.LeftUp)
-                leftUp = MaxJumpKing(pos.Offset(2, -2), Direction.RightDown) + 1;
+                leftUp = MaxJumpKing(pos.Offset(2, -2), Direction.RightDown, initpos) + 1;
             if (nothere != Direction.RightDown && (dirn & Direction.RightDown) == Direction.RightDown)
-                rightDown = MaxJumpKing(pos.Offset(-2, 2), Direction.LeftUp) + 1;
+                rightDown = MaxJumpKing(pos.Offset(-2, 2), Direction.LeftUp, initpos) + 1;
             if (nothere != Direction.LeftDown && (dirn & Direction.LeftDown) == Direction.LeftDown)
-                leftDown = MaxJumpKing(pos.Offset(-2, -2), Direction.RightUp) + 1;
+                leftDown = MaxJumpKing(pos.Offset(-2, -2), Direction.RightUp, initpos) + 1;
             return Aux.Max(rightUp, rightDown, leftUp, leftDown);
         }
         Piece[] m_Board;
@@ -1009,9 +1024,9 @@ namespace Checkers
             foreach (Piece p in m_State)
             {
                 if ((p & Piece.White) == Piece.White)
-                    numWhite += ((p & Piece.King) == Piece.King) ? 2 : 1;
+                    numWhite += ((p & Piece.King) == Piece.King) ? 3 : 1;
                 else if ((p & Piece.Black) == Piece.Black)
-                    numBlack += ((p & Piece.King) == Piece.King) ? 2 : 1;
+                    numBlack += ((p & Piece.King) == Piece.King) ? 3 : 1;
             }
             int numerator = (white_is_max_side) ? numWhite : numBlack;
             return (double)numerator / (numWhite + numBlack);
@@ -1178,16 +1193,12 @@ namespace Checkers
             }
             if (m_Root.ChildNodes != null)
             {
-                bool existingNode = false;
                 foreach (Node child in m_Root.ChildNodes)
                     if (Enumerable.SequenceEqual(m_Root.Board, child.Board))
                     {
                         m_Root = child;
-                        existingNode = true;
                         break;
                     }
-                if (!existingNode)
-                    m_Root.ChildNodes = null;
             }
             return true;
         }
