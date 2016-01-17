@@ -247,7 +247,7 @@ namespace Draughts
 			m_side_set = true;
 			m_AIside = AIside;
 			m_pbt = new BoardTool(m_AIside);
-			m_pAB = new AlphaBeta<BoardTool>(m_pbt/*, false*/);
+			m_pAB = new AlphaBeta<BoardTool>(m_pbt, false);
 		}
 		void Reset()
 		{
@@ -282,7 +282,7 @@ namespace Draughts
 		{
 			if (!m_side_set)
 				return false;
-			IField* pnewstate = m_pAB->NextState(m_pboard, 0);
+			IField* pnewstate = m_pAB->NextState(m_pboard, 1);
 			delete m_pboard;
 			m_pboard = pnewstate;
 			return true;
