@@ -28,16 +28,19 @@ namespace WinCheckers
         }
 
         private bool m_MousePressed = false;
-        private int m_DragStartRow;
-        private int m_DragStartCol;
+        private Point m_DragStart;
 
         private bool m_SideChosen = false;
         private Gameplay m_Game;
+
+        private bool m_ShowBoxWhenChecked = true;
 
         private void newGameBtn_Clicked(object sender, RoutedEventArgs e)
         {
             m_Game = new Gameplay();
             m_SideChosen = false;
+            WhiteRadButn.IsChecked = false;
+            BlackRadButn.IsChecked = false;
             ShowPieces();
         }
 
@@ -48,6 +51,28 @@ namespace WinCheckers
                 m_Game.WhitePlayer = true;
                 m_SideChosen = true;
             }
+            else
+            {
+                if (m_ShowBoxWhenChecked)
+                {
+                    MessageBox.Show("Click the New Game button before choosing side!");
+                    m_ShowBoxWhenChecked = false;
+                }
+                else
+                {
+                    m_ShowBoxWhenChecked = true;
+                }
+                if (m_Game.WhitePlayer)
+                {
+                    WhiteRadButn.IsChecked = true;
+                    BlackRadButn.IsChecked = false;
+                }
+                else
+                {
+                    WhiteRadButn.IsChecked = false;
+                    BlackRadButn.IsChecked = true;
+                }
+            }
         }
 
         private void blackBtn_Checked(object sender, RoutedEventArgs e)
@@ -56,6 +81,31 @@ namespace WinCheckers
             {
                 m_Game.WhitePlayer = false;
                 m_SideChosen = true;
+
+                m_Game.AITurn();
+                ShowPieces();
+            }
+            else
+            {
+                if (m_ShowBoxWhenChecked)
+                {
+                    MessageBox.Show("Click the New Game button before choosing side!");
+                    m_ShowBoxWhenChecked = false;
+                }
+                else
+                {
+                    m_ShowBoxWhenChecked = true;
+                }
+                if (m_Game.WhitePlayer)
+                {
+                    WhiteRadButn.IsChecked = true;
+                    BlackRadButn.IsChecked = false;
+                }
+                else
+                {
+                    WhiteRadButn.IsChecked = false;
+                    BlackRadButn.IsChecked = true;
+                }
             }
         }
 
@@ -64,16 +114,33 @@ namespace WinCheckers
             if (m_SideChosen)
             {
                 m_MousePressed = true;
-                // assign m_whereMousePressed
+                m_DragStart = e.GetPosition(mygrid);
             }
         }
 
         private void mouseReleased(object sender, MouseButtonEventArgs e)
         {
-            if (m_SideChosen)
+            if (!m_SideChosen)
             {
+                MessageBox.Show("Choose side first!");
+            }
+            else if (m_MousePressed)
+            {
+                Direction dirn;
+                Point dragEnd = e.GetPosition(mygrid);
+                if (dragEnd.X > m_DragStart.X)
+                    dirn = (dragEnd.Y > m_DragStart.Y) ? Direction.RightDown : Direction.RightUp;
+                else
+                    dirn = (dragEnd.Y > m_DragStart.Y) ? Direction.LeftDown : Direction.LeftUp;
+                if (m_Game.PlayerTurn(7 - Convert.ToInt32(m_DragStart.Y) / 55, Convert.ToInt32(m_DragStart.X) / 55, dirn))
+                {
+                    // ShowPieces(); // obsolete
+                    m_Game.AITurn();
+                    ShowPieces();
+                }
+                else
+                    MessageBox.Show("Invalid move!");
                 m_MousePressed = false;
-                // do the rest of the stuff
             }
         }
 
@@ -96,7 +163,7 @@ namespace WinCheckers
                                     Ellipse myellipse = child as Ellipse;
                                     if (myellipse.Fill is RadialGradientBrush) // King piece
                                     {
-                                        RadialGradientBrush brush = myellipse.Fill as RadialGradientBrush;
+                                        RadialGradientBrush brush = (RadialGradientBrush)myellipse.Fill;
                                         if (brush.GradientStops[1].Color == Colors.White)
                                             child.Opacity = 1;
                                         else
@@ -116,7 +183,7 @@ namespace WinCheckers
                                     Ellipse myellipse = child as Ellipse;
                                     if (myellipse.Fill is SolidColorBrush) // Man piece
                                     {
-                                        SolidColorBrush scb = myellipse.Fill as SolidColorBrush;
+                                        SolidColorBrush scb = (SolidColorBrush)myellipse.Fill;
                                         if (scb.Color == Colors.White)
                                             child.Opacity = 1;
                                         else
@@ -139,7 +206,7 @@ namespace WinCheckers
                                     Ellipse myellipse = child as Ellipse;
                                     if (myellipse.Fill is RadialGradientBrush) // King piece
                                     {
-                                        RadialGradientBrush brush = myellipse.Fill as RadialGradientBrush;
+                                        RadialGradientBrush brush = (RadialGradientBrush)myellipse.Fill;
                                         if (brush.GradientStops[1].Color == Colors.Black)
                                             child.Opacity = 1;
                                         else
@@ -149,7 +216,6 @@ namespace WinCheckers
                                         child.Opacity = 0;
                                 }
                             }
-
                         }
                         else // Black man
                         {
@@ -160,7 +226,7 @@ namespace WinCheckers
                                     Ellipse myellipse = child as Ellipse;
                                     if (myellipse.Fill is SolidColorBrush) // Man piece
                                     {
-                                        SolidColorBrush scb = myellipse.Fill as SolidColorBrush;
+                                        SolidColorBrush scb = (SolidColorBrush)myellipse.Fill;
                                         if (scb.Color == Colors.Black)
                                             child.Opacity = 1;
                                         else
@@ -172,9 +238,16 @@ namespace WinCheckers
                             }
                         }
                     }
+                    else // Empty
+                    {
+                        foreach (UIElement child in mygrid.Children)
+                        {
+                            if (Grid.GetRow(child) == row && Grid.GetColumn(child) == col && child is Ellipse)
+                                child.Opacity = 0;
+                        }
+                    }
                 }
             }
-
         }
 
     }
