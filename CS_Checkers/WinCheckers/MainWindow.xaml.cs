@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Checkers;
 
 namespace WinCheckers
 {
@@ -23,36 +24,158 @@ namespace WinCheckers
         public MainWindow()
         {
             InitializeComponent();
+            m_Game = new Gameplay();
         }
 
         private bool m_MousePressed = false;
-        private Point m_whereMousePressed; 
+        private int m_DragStartRow;
+        private int m_DragStartCol;
+
+        private bool m_SideChosen = false;
+        private Gameplay m_Game;
 
         private void newGameBtn_Clicked(object sender, RoutedEventArgs e)
         {
-            // set all pieces to the initial positions
+            m_Game = new Gameplay();
+            m_SideChosen = false;
+            ShowPieces();
         }
 
         private void whiteBtn_Checked(object sender, RoutedEventArgs e)
         {
-            // player has chosen white side
+            if (!m_SideChosen)
+            {
+                m_Game.WhitePlayer = true;
+                m_SideChosen = true;
+            }
         }
 
         private void blackBtn_Checked(object sender, RoutedEventArgs e)
         {
-            // Player is on the dark side
+            if (!m_SideChosen)
+            {
+                m_Game.WhitePlayer = false;
+                m_SideChosen = true;
+            }
         }
 
         private void mousePressed(object sender, MouseButtonEventArgs e)
         {
-            m_MousePressed = true;
-            // assign m_whereMousePressed
+            if (m_SideChosen)
+            {
+                m_MousePressed = true;
+                // assign m_whereMousePressed
+            }
         }
 
         private void mouseReleased(object sender, MouseButtonEventArgs e)
         {
-            m_MousePressed = false;
-            // do the rest of the stuff
+            if (m_SideChosen)
+            {
+                m_MousePressed = false;
+                // do the rest of the stuff
+            }
         }
+
+        private void ShowPieces()
+        {
+            for (int grow = 0; grow < 8; ++grow)
+            {
+                int row = 7 - grow;
+                for (int gcol = 0; gcol < 8; ++gcol)
+                {
+                    int col = gcol;
+                    if ((m_Game[grow, gcol] & Piece.White) == Piece.White)
+                    {
+                        if ((m_Game[grow, gcol] & Piece.King) == Piece.King) // White king
+                        {
+                            foreach (UIElement child in mygrid.Children)
+                            {
+                                if (Grid.GetRow(child) == row && Grid.GetColumn(child) == col && child is Ellipse)
+                                {
+                                    Ellipse myellipse = child as Ellipse;
+                                    if (myellipse.Fill is RadialGradientBrush) // King piece
+                                    {
+                                        RadialGradientBrush brush = myellipse.Fill as RadialGradientBrush;
+                                        if (brush.GradientStops[1].Color == Colors.White)
+                                            child.Opacity = 1;
+                                        else
+                                            child.Opacity = 0;
+                                    }
+                                    else // Man piece
+                                        child.Opacity = 0;
+                                }
+                            }
+                        }
+                        else // White man
+                        {
+                            foreach (UIElement child in mygrid.Children)
+                            {
+                                if (Grid.GetRow(child) == row && Grid.GetColumn(child) == col && child is Ellipse)
+                                {
+                                    Ellipse myellipse = child as Ellipse;
+                                    if (myellipse.Fill is SolidColorBrush) // Man piece
+                                    {
+                                        SolidColorBrush scb = myellipse.Fill as SolidColorBrush;
+                                        if (scb.Color == Colors.White)
+                                            child.Opacity = 1;
+                                        else
+                                            child.Opacity = 0;
+                                    }
+                                    else // King piece
+                                        child.Opacity = 0;
+                                }
+                            }
+                        }
+                    }
+                    else if ((m_Game[grow, gcol] & Piece.Black) == Piece.Black)
+                    {
+                        if ((m_Game[grow, gcol] & Piece.King) == Piece.King) // black king
+                        {
+                            foreach (UIElement child in mygrid.Children)
+                            {
+                                if (Grid.GetRow(child) == row && Grid.GetColumn(child) == col && child is Ellipse)
+                                {
+                                    Ellipse myellipse = child as Ellipse;
+                                    if (myellipse.Fill is RadialGradientBrush) // King piece
+                                    {
+                                        RadialGradientBrush brush = myellipse.Fill as RadialGradientBrush;
+                                        if (brush.GradientStops[1].Color == Colors.Black)
+                                            child.Opacity = 1;
+                                        else
+                                            child.Opacity = 0;
+                                    }
+                                    else // Man piece
+                                        child.Opacity = 0;
+                                }
+                            }
+
+                        }
+                        else // Black man
+                        {
+                            foreach (UIElement child in mygrid.Children)
+                            {
+                                if (Grid.GetRow(child) == row && Grid.GetColumn(child) == col && child is Ellipse)
+                                {
+                                    Ellipse myellipse = child as Ellipse;
+                                    if (myellipse.Fill is SolidColorBrush) // Man piece
+                                    {
+                                        SolidColorBrush scb = myellipse.Fill as SolidColorBrush;
+                                        if (scb.Color == Colors.Black)
+                                            child.Opacity = 1;
+                                        else
+                                            child.Opacity = 0;
+                                    }
+                                    else // King piece
+                                        child.Opacity = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+
     }
 }
