@@ -1024,9 +1024,9 @@ namespace Checkers
             foreach (Piece p in m_State)
             {
                 if ((p & Piece.White) == Piece.White)
-                    numWhite += ((p & Piece.King) == Piece.King) ? 3 : 1;
+                    numWhite += ((p & Piece.King) == Piece.King) ? 2 : 1;
                 else if ((p & Piece.Black) == Piece.Black)
-                    numBlack += ((p & Piece.King) == Piece.King) ? 3 : 1;
+                    numBlack += ((p & Piece.King) == Piece.King) ? 2 : 1;
             }
             int numerator = (white_is_max_side) ? numWhite : numBlack;
             return (double)numerator / (numWhite + numBlack);
@@ -1082,7 +1082,7 @@ namespace Checkers
             Aux.Initialize(out board);
             m_Root = new Node(board);
         }
-        public Gameplay() : this(9, 8)
+        public Gameplay() : this(11, 8)
         { }
         /// <summary> 
         /// Player side. Can be set only once and accessed only when set.
