@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WinCheckers"
         mc:Ignorable="d"
-        Title="MainWindow" Height="610" Width="600" Background="#FF8B3737" WindowStyle="ThreeDBorderWindow">
+        Title="Checkers" Height="610" Width="600" Background="#FF8B3737" WindowStyle="ThreeDBorderWindow">
 	<DockPanel LastChildFill="True">
 		<Grid DockPanel.Dock="Top" Height="100">
 			<Grid.ColumnDefinitions>
