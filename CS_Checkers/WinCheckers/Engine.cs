@@ -93,7 +93,7 @@ namespace Checkers
         }
         public static bool operator !=(Position pos1, Position pos2)
         {
-            return (pos1.Row != pos2.Row) && (pos1.Col != pos2.Col);
+            return (pos1.Row != pos2.Row) || (pos1.Col != pos2.Col);
         }
     }
     internal static class Aux
@@ -1060,7 +1060,7 @@ namespace Checkers
     }
     //===============================================================================
     /// <summary>
-    /// The game class that maintains the board and a tree of nodes, and facilitates 
+    /// The game class maintains the board and a tree of nodes, and facilitates 
     /// player and AI moves.
     /// </summary>
     //===============================================================================
