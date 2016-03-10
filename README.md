@@ -1,6 +1,6 @@
 # Draughts
 
-English version of rules. 
+English version of rules. Impemented in C++ and C#.
 
 ####C++_Draughts
 * `/CmdDraughts`: console version, without dynamic programming (doesn't save the tree)
